@@ -1,0 +1,5 @@
+name: thukdam
+dependencies:
+  - numpy
+  - pandas
+  - mne
