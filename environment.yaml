@@ -1,5 +1,6 @@
 name: thukdam
 dependencies:
-  - numpy
-  - pandas
-  - mne
+    - numpy
+    - pandas
+    - ipython
+    - matplotlib
