@@ -5,8 +5,9 @@ import numpy as np
 import logging
 from datetime import datetime, timedelta
 from matplotlib import pyplot as plt
-
 import mne
+
+scriptDir = sys.path[0]
 
 FREQUENCY_HIGHPASS_ARTIFACT = 0.5
 FREQUENCY_HIGHPASS = 1
@@ -28,15 +29,11 @@ EVENT_ID = {
 }
 
 
-scriptDir = sys.path[0]
-
 raw_file = "FM2004_HB1_R.bdf"
 # How wide of a buffer around the crop do we want?
 BUFFER_SECONDS = 2
 
 raw = mne.io.read_raw_bdf(raw_file)
-
-# TODO: raw.set_montage?
 
 # Crop to the MMN section of the file
 sfreq = raw.info['sfreq']
@@ -72,6 +69,12 @@ raw.load_data()
 raw.rename_channels({'EXG1': 'cz', 'EXG2': 'mr', 'EXG3': 'ml', 'EXG4': 'fz', 'EXG5': 'pz', 'EXG6': 't8'})
 # Reference electrodes
 raw.set_eeg_reference(['mr', 'ml'])
+
+# LAYOUT is the 2D display. Probably don't need this.
+layout = mne.channels.read_layout(os.path.join(scriptDir, 'biosemi.lay'))
+
+# TODO: Figure out how to apply montage to the raw data
+montage = mne.channels.make_standard_montage('biosemi16')
 
 
 
@@ -170,7 +173,8 @@ epochs_params = dict(events=events, event_id=EVENT_ID,
 epochs = mne.Epochs(raw, **epochs_params)
 epochs.plot()
 
-epochs.plot_psd()
+# HANGS
+epochs.plot_image(evoked=True)
 
 
 # TODO: how to plot these, plus the difference?
@@ -179,10 +183,12 @@ deviant = epochs["Deviant"].average()
 same = epochs["Same"].average()
 
 difference = mne.combine_evoked([same, -deviant], weights='equal')
+difference.plot()
 
-deviant.plot(picks=['fz'])
-same.plot(picks=['fz'])
+difference.plot_image()
 
+same.plot(picks=['fz'], title='Fz Same')
+deviant.plot(picks=['fz'], title='Fz Deviant')
 
 
 # OLD STYLE, remove later
