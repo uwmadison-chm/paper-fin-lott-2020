@@ -11,20 +11,20 @@ scriptDir = sys.path[0]
 
 FREQUENCY_HIGHPASS_ARTIFACT = 0.5
 FREQUENCY_HIGHPASS = 1
-FREQUENCY_LOWPASS = 25
+FREQUENCY_LOWPASS = 35
 
 # Event IDs
 UNKNOWN = 1
-SAME = 2
+STANDARD = 2
 DEVIANT = 3
 EVENT_COLORS = {
     UNKNOWN: "blue",
-    SAME: "green",
+    STANDARD: "green",
     DEVIANT: "red"
 }
 EVENT_ID = {
     "Unknown": UNKNOWN,
-    "Same": SAME,
+    "Standard": STANDARD,
     "Deviant": DEVIANT
 }
 
@@ -71,10 +71,10 @@ raw.rename_channels({'EXG1': 'cz', 'EXG2': 'mr', 'EXG3': 'ml', 'EXG4': 'fz', 'EX
 raw.set_eeg_reference(['mr', 'ml'])
 
 # LAYOUT is the 2D display. Probably don't need this.
-layout = mne.channels.read_layout(os.path.join(scriptDir, 'biosemi.lay'))
+#layout = mne.channels.read_layout(os.path.join(scriptDir, 'biosemi.lay'))
 
 # TODO: Figure out how to apply montage to the raw data
-montage = mne.channels.make_standard_montage('biosemi16')
+#montage = mne.channels.make_standard_montage('biosemi16')
 
 
 
@@ -129,7 +129,7 @@ numSameEvents = 0
 numDeviantEvents = 0
 for i in range(1, len(events)):
     if (tones[i] == tones[i - 1]):
-        events[i,2] = SAME
+        events[i,2] = STANDARD
         numSameEvents += 1
     else:
         events[i,2] = DEVIANT
@@ -156,7 +156,8 @@ raw.annotations.save('saved-annotations.csv')
 # TODO
 annot_from_file = mne.read_annotations('saved-annotations.csv')
 
-# Actually filter
+
+# Actually do the real filtering (happens in-place)
 raw.filter(l_freq=FREQUENCY_HIGHPASS, h_freq=FREQUENCY_LOWPASS)
 
 # Epoching...
@@ -171,31 +172,34 @@ epochs_params = dict(events=events, event_id=EVENT_ID,
                      #, proj=True, detrend=0)
 
 epochs = mne.Epochs(raw, **epochs_params)
-epochs.plot()
 
-# HANGS
-epochs.plot_image(evoked=True)
+# Simple epoch plot
+#epochs.plot()
+
+# VERY SLOW
+#epochs.plot_image(cmap="YlGnBu_r")
 
 
-# TODO: how to plot these, plus the difference?
+# Plot standard and deviant on one figure, plus plot the difference, like original matlab
 
 deviant = epochs["Deviant"].average()
-same = epochs["Same"].average()
+standard = epochs["Standard"].average()
 
-difference = mne.combine_evoked([same, -deviant], weights='equal')
-difference.plot()
+difference = mne.combine_evoked([deviant, -standard], weights='equal')
 
-difference.plot_image()
+evoked = dict()
+evoked["Standard"] = standard
+evoked["Deviant"] = deviant
+evoked["Difference"] = difference
 
-same.plot(picks=['fz'], title='Fz Same')
-deviant.plot(picks=['fz'], title='Fz Deviant')
+colors = dict(Standard="Green", Deviant="Red", Difference="Black")
 
+# TODO: Figure out what we need to change about the evoked data so we get confidence intervals displayed - possibly MNE problems?
+# @agramfort in mne-tools/mne-python gitter said: "to have confidence intervals you need repetitions which I think is a list of evoked or not epochs you need to pass" 
 
-# OLD STYLE, remove later
+pick = standard.ch_names.index('cz')
+fig = mne.viz.plot_compare_evokeds(evoked, picks=pick, colors=colors, split_legend=True, ci=0.95)
 
-same = mne.Epochs(filtered_raw, event_id=SAME, **epochs_params)
-same_avg = same.average()
-same_avg.plot()
+picks = ['cz', 'fz', 'pz', 't8']
+fig = mne.viz.plot_compare_evokeds(evoked, picks=picks, colors=colors, combine='mean', ci=0.95)
 
-# This throws "no digitization points found"
-same_avg.plot_topomap(times=[0.1], size=3., title="Topo", time_unit='s')
