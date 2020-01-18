@@ -220,7 +220,7 @@ class BDFWithMetadata():
         return self.source_path.replace(".bdf", ".events.npy")
 
     def artifact_rejection(self):
-        logging.info("Ready for artifact rejection! Press 'a' to start, add a label, and then drag on the graph.")
+        logging.info("View loaded. Ready for artifact rejection! Press 'a' to start, add a label, and then drag on the graph. Close the view window to continue.")
         fig = self.raw.plot(
             block=True,
             remove_dc=True,

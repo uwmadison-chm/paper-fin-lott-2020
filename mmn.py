@@ -6,15 +6,15 @@ import mne
 
 from eeg_shared import BDFWithMetadata
 
-parser = argparse.ArgumentParser(description='Automate FMed study artifact rejection and analysis.')
+parser = argparse.ArgumentParser(description='Automate FMed study artifact rejection and analysis of MMN.')
 
 parser.add_argument('input', help='Path to input file.')
 parser.add_argument('-v', '--verbose', action='count', default=0)
-parser.add_argument('-r', '--reject-artifacts', action='store_true')
-parser.add_argument('--epoch-view', action='store_true', help="Simple linear view of epochs")
-parser.add_argument('--epoch-image', action='store_true', help="Very slow colormap image of epochs")
+parser.add_argument('--view', action='store_true', help="Allow viewing file and editing artifact mask")
 parser.add_argument('--sminusd', metavar='ELECTRODE', action='store', help="Standard minus deviant of a specified electrode (cz, fz, t8, pz)")
 parser.add_argument('--sminusd-mean', action='store_true', help="Mean standard minus deviant across all 4 electrodes")
+parser.add_argument('--epoch-image', action='store_true', help="Very slow colormap image of epochs")
+parser.add_argument('--epoch-view', action='store_true', help="Simple linear view of epochs, default end view")
 
 args = parser.parse_args()
 
@@ -28,19 +28,10 @@ raw_file = args.input
 
 f = BDFWithMetadata(raw_file)
 f.load()
-if args.reject_artifacts:
+if args.view:
     f.artifact_rejection()
 
 epochs = f.build_epochs()
-
-if args.epoch_view:
-    epochs.plot(block=True)
-    sys.exit()
-
-if args.epoch_image:
-    # VERY SLOW
-    epochs.plot_image(cmap="YlGnBu_r")
-    sys.exit()
 
 
 if args.sminusd or args.sminusd_mean:
@@ -70,4 +61,18 @@ if args.sminusd or args.sminusd_mean:
     if args.sminusd_mean:
         picks = ['cz', 'fz', 'pz', 't8']
         fig = mne.viz.plot_compare_evokeds(evoked, picks=picks, colors=colors, combine='mean', ci=0.95)
+
+    sys.exit()
+
+
+if args.epoch_image:
+    # VERY SLOW
+    logging.warning("Plotting epoch image, VERY SLOW")
+    epochs.plot_image(cmap="YlGnBu_r")
+    sys.exit()
+
+# args.epoch_view is the default
+logging.info("Loading epoch view...")
+epochs.plot(block=True)
+sys.exit()
 
