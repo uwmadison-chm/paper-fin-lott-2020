@@ -34,21 +34,34 @@ EVENT_ID = {
 class BDFWithMetadata():
     def __init__(self, path):
         self.source_path = path
+
+    def load(self):
         # Do we have existing metadata?
         metadata = self.artifact_metadata_file()
+        self.load_existing_metadata()
+        self.load_existing_events()
+
+        self.load_mmn(self.source_path)
+
+    def load_existing_metadata(self):
+        metadata = self.artifact_metadata_file()
         if os.path.exists(metadata):
-            self.load_existing_metadata(metadata)
+            with open(metadata) as file:
+                data = yaml.load(file, Loader=yaml.FullLoader)
+                self.tstart_seconds = data['tstart_seconds']
+                self.tstop_seconds = data['tstop_seconds']
+                logging.info(f"Loaded existing start {self.tstart_seconds} and end {self.tstop_seconds} from {metadata}")
         else:
             self.tstart_seconds = None
             self.tstop_seconds = None
 
-        self.load_mmn(path)
-
-    def load_existing_metadata(self, path):
-        with open(path) as file:
-            data = yaml.load(file, Loader=yaml.FullLoader)
-            print(data)
-            sys.exit("YIKES")
+    def load_existing_events(self):
+        e = self.events_file()
+        if os.path.exists(e):
+            self.events = np.load(e)
+            logging.info(f"Loaded {len(self.events)} from events numpy file {e}")
+        else:
+            self.events = []
 
     def load_mmn(self, raw_file):
         raw = mne.io.read_raw_bdf(raw_file)
@@ -66,10 +79,9 @@ class BDFWithMetadata():
         first_run = True
         
         # Crop to the MMN section of the file
-        if self.tstart_seconds:
+        if self.tstart_seconds and len(self.events) > 0:
             # If we already have information, use that
             raw.crop(tmin=self.tstart_seconds, tmax=self.tstop_seconds)
-            events = self.events
             first_run = False
         else:
             # NO existing info, time to get fancy!
@@ -92,9 +104,6 @@ class BDFWithMetadata():
 
             # Truncate the events list to the 2000 MMN events
             self.events = raw_events[:2000].copy()
-            # Subtract out the amount we cropped by
-            # NOTE: Maybe we don't need to do this?
-            #self.events[:,0] = self.events[:,0] - tstart
 
         raw.load_data()
         # Rename channels in raw based on actual electrode names
@@ -116,27 +125,34 @@ class BDFWithMetadata():
         
             # Now we automatically save out the cropping and events metadata
             self.save_metadata()
+            self.save_events()
 
         # If previous annotations exist, read them
         mask_path = self.artifact_mask_file()
         if os.path.exists(mask_path):
+            logging.info(f"Loading existing artifact annotations from {mask_path}")
             a = mne.read_annotations(mask_path)
             self.raw.set_annotations(a)
 
+    def save_events(self):
+        np.save(self.events_file(), self.events)
+
     def save_metadata(self):
         data = {
-            'tstart_seconds': self.tstart_seconds,
-            'tstop_seconds': self.tstop_seconds,
+            'tstart_seconds': int(self.tstart_seconds),
+            'tstop_seconds': int(self.tstop_seconds),
+            'source_path': int(self.tstop_seconds),
         }
         with open(self.artifact_metadata_file(), 'w') as file:
             yaml.dump(data, file)
         # TODO: events how?
 
     def load_event_tones(self):
+        logging.info(f"Determining MMN event types")
         # Now we need to load the right event tones and paste them into the event array
         scriptDir = sys.path[0]
         mmnToneDir = os.path.join(scriptDir, 'MMN_tone_sequences')
-        # TODO: Get from user input - assume false for now
+        # TODO: Get from user input, or, better, from subject metadata - assume false for now
         is2013Initial = False
 
         if is2013Initial:
@@ -173,7 +189,7 @@ class BDFWithMetadata():
         dayEven = doy % 2
         whichSeq = 2 * dayEven + daySegment
         mmnToneFileName = f"{mmnToneFileStart}{whichSeq}{mmnToneFileEnd}"
-        logging.info(f"Loading from {mmnToneFileName}")
+        logging.info(f"Loading tones from {mmnToneFileName}")
 
         with open(mmnToneFileName) as csvfile:
             reader = csv.reader(csvfile)
@@ -191,7 +207,7 @@ class BDFWithMetadata():
             else:
                 self.events[i,2] = DEVIANT
                 numDeviantEvents += 1
-        print(f"Determined {numSameEvents} same events and {numDeviantEvents} deviant events")
+        logging.info(f"Determined {numSameEvents} same events and {numDeviantEvents} deviant events")
 
     # TODO: These should do a different thing on the study drive vs. running locally
     def artifact_mask_file(self):
@@ -199,9 +215,12 @@ class BDFWithMetadata():
 
     def artifact_metadata_file(self):
         return self.source_path.replace(".bdf", ".artifact_metadata.yaml")
+    
+    def events_file(self):
+        return self.source_path.replace(".bdf", ".events.npy")
 
     def artifact_rejection(self):
-        # ARTIFACT REJECTION! Press 'a' to start
+        logging.info("Ready for artifact rejection! Press 'a' to start, add a label, and then drag on the graph.")
         fig = self.raw.plot(
             block=True,
             remove_dc=True,
@@ -215,4 +234,22 @@ class BDFWithMetadata():
         mask_path = self.artifact_mask_file()
 
         # Save the annotations
-        self.raw.annotations.save(mask_path)
+        if len(self.raw.annotations) > 0:
+            self.raw.annotations.save(mask_path)
+
+    def build_epochs(self):
+        # Actually do the real final filtering (happens in-place)
+        self.raw.filter(l_freq=FREQUENCY_HIGHPASS, h_freq=FREQUENCY_LOWPASS)
+
+        # Epoching...
+        picks = ['cz', 'fz', 'pz', 't8']
+        tmin, tmax = -0.1, 0.4
+
+        # TODO: Do automatic rejection of spikes? Can also pass a "too-flat" rejection if needed
+        epochs_params = dict(events=self.events, event_id=EVENT_ID,
+                             tmin=tmin, tmax=tmax,
+                             picks=picks, reject=None, flat=None)
+                             #, proj=True, detrend=0)
+
+        self.epochs = mne.Epochs(self.raw, **epochs_params)
+        return self.epochs
