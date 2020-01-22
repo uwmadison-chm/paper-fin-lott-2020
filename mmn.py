@@ -48,8 +48,9 @@ if args.sminusd or args.sminusd_mean:
 
     colors = dict(Standard="Green", Deviant="Red", Difference="Black")
 
-    # TODO: Figure out what we need to change about the evoked data so we get confidence intervals displayed - possibly MNE problems?
+    # TODO: Figure out what we need to change about the evoked data so we get confidence intervals displayed
     # @agramfort in mne-tools/mne-python gitter said: "to have confidence intervals you need repetitions which I think is a list of evoked or not epochs you need to pass" 
+    # May want to do something more like: https://mne.tools/stable/auto_examples/stats/plot_sensor_regression.html?highlight=plot_compare_evokeds
 
     if args.sminusd:
         pick = standard.ch_names.index(args.sminusd)

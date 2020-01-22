@@ -34,6 +34,8 @@ EVENT_ID = {
 class BDFWithMetadata():
     def __init__(self, path):
         self.source_path = path
+        # TODO: determine if source path is in the standard /study/thukdam/raw-data location or not
+        self.script_dir = sys.path[0]
 
     def load(self):
         # Do we have existing metadata?
@@ -97,8 +99,13 @@ class BDFWithMetadata():
             duration_seconds = self.tstop_seconds - self.tstart_seconds
             if duration_seconds < 1000 - BUFFER_SECONDS*2 or \
             duration_seconds > 1000 + BUFFER_SECONDS*2:
-                sys.exit(f"FAILURE: Could not find MMN events automatically. Talk to a developer!")
-                # TODO: Yeah sorry, in a bit of a rush to get this working
+                # TODO: Yeah sorry if this sucks in actual use, bit of a rush to get this all working
+                logging.warning(f"Could not find MMN events automatically. Please scroll and find start and stop time in seconds manually!")
+                # Temporarily set our events to the full list for plotting
+                self.events = raw_events.copy()
+                self.plot(False)
+                self.tstart_seconds = input("MMN start time (in seconds)")
+                self.tstop_seconds = input("MMN stop time (in seconds)"
 
             raw.crop(tmin=self.tstart_seconds, tmax=self.tstop_seconds)
 
@@ -107,14 +114,18 @@ class BDFWithMetadata():
 
         raw.load_data()
         # Rename channels in raw based on actual electrode names
+        # This is based on FMed_Chanlocs_6channels.ced
         raw.rename_channels({'EXG1': 'cz', 'EXG2': 'mr', 'EXG3': 'ml', 'EXG4': 'fz', 'EXG5': 'pz', 'EXG6': 't8'})
         # Reference electrodes
         raw.set_eeg_reference(['mr', 'ml'])
 
         # LAYOUT is the 2D display. Probably don't need this.
-        #layout = mne.channels.read_layout(os.path.join(scriptDir, 'biosemi.lay'))
+        #layout = mne.channels.read_layout(os.path.join(self.script_dir, 'biosemi.lay'))
         
-        # TODO: Figure out how to apply montage to the raw data
+        # It would be nice figure out how to apply montage to the raw data,
+        # so we could get averaged displays in spatial orientation...
+        # but since we only have 6 channels, very unclear how to apply
+        # any of the standard montages
         #montage = mne.channels.make_standard_montage('biosemi16')
 
         self.raw = raw
@@ -134,9 +145,6 @@ class BDFWithMetadata():
             a = mne.read_annotations(mask_path)
             self.raw.set_annotations(a)
 
-    def save_events(self):
-        np.save(self.events_file(), self.events)
-
     def save_metadata(self):
         data = {
             'tstart_seconds': int(self.tstart_seconds),
@@ -145,13 +153,15 @@ class BDFWithMetadata():
         }
         with open(self.artifact_metadata_file(), 'w') as file:
             yaml.dump(data, file)
-        # TODO: events how?
+
+    def save_events(self):
+        np.save(self.events_file(), self.events)
+
 
     def load_event_tones(self):
         logging.info(f"Determining MMN event types")
         # Now we need to load the right event tones and paste them into the event array
-        scriptDir = sys.path[0]
-        mmnToneDir = os.path.join(scriptDir, 'MMN_tone_sequences')
+        mmnToneDir = os.path.join(self.script_dir, 'MMN_tone_sequences')
         # TODO: Get from user input, or, better, from subject metadata - assume false for now
         is2013Initial = False
 
@@ -219,10 +229,9 @@ class BDFWithMetadata():
     def events_file(self):
         return self.source_path.replace(".bdf", ".events.npy")
 
-    def artifact_rejection(self):
-        logging.info("View loaded. Ready for artifact rejection! Press 'a' to start, add a label, and then drag on the graph. Close the view window to continue.")
-        fig = self.raw.plot(
-            block=True,
+    def plot(self, block=True):
+        self.raw.plot(
+            block=block,
             remove_dc=True,
             events=self.events,
             event_color=EVENT_COLORS,
@@ -230,6 +239,10 @@ class BDFWithMetadata():
             duration=5.0,
             order=[0, 3, 4, 5], # display only the 4 channels we care about
             scalings=dict(eeg=50e-6))
+
+    def artifact_rejection(self):
+        logging.info("View loaded. Ready for artifact rejection! Press 'a' to start, add a label, and then drag on the graph. Close the view window to continue.")
+        self.plot()
 
         mask_path = self.artifact_mask_file()
 
