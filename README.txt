@@ -10,6 +10,10 @@ In progress.
     conda activate thukdam
     pip install mne
 
+On windows, you may need to:
+
+    pip install pyqt5
+
 ## Usage: MMN
 
 This MNE-based analysis does NOT require decimation or cropping of input 

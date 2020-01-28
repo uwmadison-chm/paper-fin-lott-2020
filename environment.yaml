@@ -1,9 +1,9 @@
 name: thukdam
 dependencies:
     - numpy
+    - scipy
     - pandas
     - ipython
     - matplotlib
     - pyyaml
-    - mne
     - coloredlogs

@@ -4,6 +4,7 @@ import csv
 import numpy as np
 import logging
 import yaml
+from pathlib import Path
 from datetime import datetime, timedelta
 from matplotlib import pyplot as plt
 import mne
@@ -33,9 +34,26 @@ EVENT_ID = {
 
 class BDFWithMetadata():
     def __init__(self, path):
-        self.source_path = path
-        # TODO: determine if source path is in the standard /study/thukdam/raw-data location or not
         self.script_dir = sys.path[0]
+        self.source_path = path
+
+        # Determine if source path is in the standard /study/thukdam/raw-data location or not
+        p = Path(path).resolve()
+        parts = p.parts
+        if "raw-data" in parts and "subjects" in parts:
+            # If "raw-data", "subjects" is in path, replace "raw-data" with "intermediate_data", "eeg"
+            dest = list(parts)
+            raw_index = dest.index('raw-data')
+            dest[raw_index] = "intermediate_data"
+            dest.insert(raw_index+1, "eeg")
+            # Create directory if it doesn't exist
+            dest_path = Path(os.path.join(*dest))
+        else:
+            dest_path = p
+
+        self.output_dir = p.parent
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.output_path = str(dest_path)
 
     def load(self):
         # Do we have existing metadata?
@@ -67,6 +85,7 @@ class BDFWithMetadata():
 
     def load_mmn(self, raw_file):
         raw = mne.io.read_raw_bdf(raw_file)
+        self.raw = raw
 
         # TODO: Original script does weird event deletion, with this comment:
         """
@@ -105,7 +124,7 @@ class BDFWithMetadata():
                 self.events = raw_events.copy()
                 self.plot(False)
                 self.tstart_seconds = input("MMN start time (in seconds)")
-                self.tstop_seconds = input("MMN stop time (in seconds)"
+                self.tstop_seconds = input("MMN stop time (in seconds)")
 
             raw.crop(tmin=self.tstart_seconds, tmax=self.tstop_seconds)
 
@@ -219,15 +238,14 @@ class BDFWithMetadata():
                 numDeviantEvents += 1
         logging.info(f"Determined {numSameEvents} same events and {numDeviantEvents} deviant events")
 
-    # TODO: These should do a different thing on the study drive vs. running locally
     def artifact_mask_file(self):
-        return self.source_path.replace(".bdf", ".artifact_mask.csv")
+        return self.output_path.replace(".bdf", ".artifact_mask.csv")
 
     def artifact_metadata_file(self):
-        return self.source_path.replace(".bdf", ".artifact_metadata.yaml")
+        return self.output_path.replace(".bdf", ".artifact_metadata.yaml")
     
     def events_file(self):
-        return self.source_path.replace(".bdf", ".events.npy")
+        return self.output_path.replace(".bdf", ".events.npy")
 
     def plot(self, block=True):
         self.raw.plot(
