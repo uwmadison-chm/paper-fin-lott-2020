@@ -75,5 +75,4 @@ if args.epoch_image:
 # args.epoch_view is the default
 logging.info("Loading epoch view...")
 epochs.plot(block=True)
-sys.exit()
 
