@@ -83,9 +83,13 @@ class BDFWithMetadata():
         else:
             self.events = []
 
-    def locate_events(self, expected_events, expected_duration):
+    def locate_events(self, expected_events, expected_duration, kind):
         """
-        Locate event chunks in file that match the given duration
+        Locate event chunks in file that match the given duration.
+
+        expected_events: Integer number of events we want to find
+        expected_duration: Duration in seconds that we want to find them in
+        kind: User-visible sort of events we're looking for
         """
         sfreq = self.raw.info['sfreq']
         raw_events = mne.find_events(self.raw)
@@ -108,13 +112,13 @@ class BDFWithMetadata():
                 skipped_events += 1
 
         if looking:
-            # TODO: Yeah sorry if this sucks in actual use, bit of a rush to get this all working
-            logging.warning(f"Could not find {expected_events} events automatically, skipped {skipped_events} while trying. Please scroll and find start and stop time in seconds manually!")
+            # Sorry if this sucks in actual use, bit of a rush to get this all working
+            logging.warning(f"Could not find {expected_events} {kind} events automatically, skipped {skipped_events} while trying. Please scroll and find start and stop time in seconds manually!")
             # Temporarily set our events to the full list for plotting
             self.events = raw_events.copy()
             self.plot(False)
-            self.tstart_seconds = input("Enter start time (in seconds): ")
-            self.tstop_seconds = input("Enter stop time (in seconds): ")
+            self.tstart_seconds = input(f"Enter {kind} start time (in seconds): ")
+            self.tstop_seconds = input(f"Enter {kind} stop time (in seconds): ")
 
         # Crop to those seconds
         self.raw.crop(tmin=self.tstart_seconds, tmax=self.tstop_seconds)
@@ -143,7 +147,7 @@ class BDFWithMetadata():
             self.raw.crop(tmin=self.tstart_seconds, tmax=self.tstop_seconds)
             first_run = False
         else:
-            self.locate_events(2000, 1000)
+            self.locate_events(2000, 1000, "MMN")
 
         self.raw.load_data()
         # Rename channels in raw based on actual electrode names
@@ -170,11 +174,7 @@ class BDFWithMetadata():
             self.save_events()
 
         # If previous annotations exist, read them
-        mask_path = self.artifact_mask_file()
-        if os.path.exists(mask_path):
-            logging.info(f"Loading existing artifact annotations from {mask_path}")
-            a = mne.read_annotations(mask_path)
-            self.raw.set_annotations(a)
+        self.load_annotations()
 
     def save_metadata(self):
         data = {
@@ -187,6 +187,13 @@ class BDFWithMetadata():
 
     def save_events(self):
         np.save(self.events_file(), self.events)
+
+    def load_annotations(self):
+        mask_path = self.artifact_mask_file()
+        if os.path.exists(mask_path):
+            logging.info(f"Loading existing artifact annotations from {mask_path}")
+            a = mne.read_annotations(mask_path)
+            self.raw.set_annotations(a)
 
 
     def load_event_tones(self):
@@ -282,7 +289,7 @@ class BDFWithMetadata():
 
     def build_epochs(self):
         # Actually do the real final filtering (happens in-place)
-        self.raw.filter(l_freq=FREQUENCY_HIGHPASS, h_freq=FREQUENCY_LOWPASS)
+        self.raw.filter(l_freq=FREQUENCY_HIGHPASS, h_freq=FREQUENCY_LOWPASS, fir_design='firwin')
 
         # Epoching...
         picks = ['cz', 'fz', 'pz', 't8']

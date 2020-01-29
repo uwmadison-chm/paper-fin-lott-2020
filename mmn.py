@@ -5,14 +5,16 @@ import argparse
 import logging
 import coloredlogs
 import mne
+from mne.preprocessing import ICA, create_ecg_epochs
 
 from eeg_shared import BDFWithMetadata
 
-parser = argparse.ArgumentParser(description='Automate FMed study artifact rejection and analysis of MMN.')
+parser = argparse.ArgumentParser(description='Automate FMed study artifact rejection and analysis of MMN. By default loads the file for viewing')
 
 parser.add_argument('input', help='Path to input file.')
 parser.add_argument('-v', '--verbose', action='count', default=0)
-parser.add_argument('--view', action='store_true', help="Allow viewing file and editing artifact mask")
+parser.add_argument('--skip-view', action='store_true', help="Skip viewing file and editing artifact mask")
+parser.add_argument('--topo', action='store_true', help="Topo map")
 parser.add_argument('--sminusd', metavar='ELECTRODE', action='store', help="Standard minus deviant of a specified electrode (cz, fz, t8, pz)")
 parser.add_argument('--sminusd-mean', action='store_true', help="Mean standard minus deviant across all 4 electrodes")
 parser.add_argument('--epoch-image', action='store_true', help="Very slow colormap image of epochs")
@@ -30,7 +32,7 @@ raw_file = args.input
 
 f = BDFWithMetadata(raw_file)
 f.load()
-if args.view:
+if not args.skip_view:
     f.artifact_rejection()
 
 epochs = f.build_epochs()
@@ -69,10 +71,16 @@ if args.sminusd or args.sminusd_mean:
 
 
 if args.epoch_image:
-    # VERY SLOW
     logging.warning("Plotting epoch image, VERY SLOW")
     epochs.plot_image(cmap="YlGnBu_r")
     sys.exit()
+
+
+if args.topo:
+    deviant = epochs["Deviant"].average()
+    standard = epochs["Standard"].average()
+    deviant.plot_topomap(times=[0.1], size=3., title='Deviant', time_unit='s')
+    standard.plot_topomap(times=[0.1], size=3., title='Standard', time_unit='s')
 
 # args.epoch_view is the default
 logging.info("Loading epoch view...")
