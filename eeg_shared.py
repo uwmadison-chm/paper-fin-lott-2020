@@ -83,9 +83,47 @@ class BDFWithMetadata():
         else:
             self.events = []
 
+    def locate_events(self, expected_events, expected_duration):
+        """
+        Locate event chunks in file that match the given duration
+        """
+        sfreq = self.raw.info['sfreq']
+        raw_events = mne.find_events(self.raw)
+
+        skipped_events = 0
+        looking = True
+
+        while looking and len(raw_events) - skipped_events >= expected_events:
+            tstart = (raw_events[skipped_events,0] - (sfreq * BUFFER_SECONDS))
+            self.tstart_seconds = tstart / sfreq
+            tstop = (raw_events[skipped_events+expected_events-1,0] + (sfreq * BUFFER_SECONDS))
+            self.tstop_seconds = tstop / sfreq
+            duration_seconds = self.tstop_seconds - self.tstart_seconds
+
+            logging.info(f"Checked at {skipped_events}, got {duration_seconds}")
+            if duration_seconds > expected_duration - BUFFER_SECONDS*2 and \
+                duration_seconds < expected_duration + BUFFER_SECONDS*2:
+                looking = False
+            else:
+                skipped_events += 1
+
+        if looking:
+            # TODO: Yeah sorry if this sucks in actual use, bit of a rush to get this all working
+            logging.warning(f"Could not find {expected_events} events automatically, skipped {skipped_events} while trying. Please scroll and find start and stop time in seconds manually!")
+            # Temporarily set our events to the full list for plotting
+            self.events = raw_events.copy()
+            self.plot(False)
+            self.tstart_seconds = input("Enter start time (in seconds): ")
+            self.tstop_seconds = input("Enter stop time (in seconds): ")
+
+        # Crop to those seconds
+        self.raw.crop(tmin=self.tstart_seconds, tmax=self.tstop_seconds)
+
+        # Truncate the events list to the ones we wanted
+        self.events = raw_events[:expected_events].copy()
+
     def load_mmn(self, raw_file):
-        raw = mne.io.read_raw_bdf(raw_file)
-        self.raw = raw
+        self.raw = mne.io.read_raw_bdf(raw_file)
 
         # TODO: Original script does weird event deletion, with this comment:
         """
@@ -102,41 +140,17 @@ class BDFWithMetadata():
         # Crop to the MMN section of the file
         if self.tstart_seconds and len(self.events) > 0:
             # If we already have information, use that
-            raw.crop(tmin=self.tstart_seconds, tmax=self.tstop_seconds)
+            self.raw.crop(tmin=self.tstart_seconds, tmax=self.tstop_seconds)
             first_run = False
         else:
-            # NO existing info, time to get fancy!
-            sfreq = raw.info['sfreq']
-            raw_events = mne.find_events(raw)
+            self.locate_events(2000, 1000)
 
-            # Crop to first 2000 events
-            tstart = (raw_events[0,0] - (sfreq * BUFFER_SECONDS))
-            self.tstart_seconds = tstart / sfreq
-            tstop = (raw_events[1999,0] + (sfreq * BUFFER_SECONDS))
-            self.tstop_seconds = tstop / sfreq
-
-            duration_seconds = self.tstop_seconds - self.tstart_seconds
-            if duration_seconds < 1000 - BUFFER_SECONDS*2 or \
-            duration_seconds > 1000 + BUFFER_SECONDS*2:
-                # TODO: Yeah sorry if this sucks in actual use, bit of a rush to get this all working
-                logging.warning(f"Could not find MMN events automatically. Please scroll and find start and stop time in seconds manually!")
-                # Temporarily set our events to the full list for plotting
-                self.events = raw_events.copy()
-                self.plot(False)
-                self.tstart_seconds = input("MMN start time (in seconds)")
-                self.tstop_seconds = input("MMN stop time (in seconds)")
-
-            raw.crop(tmin=self.tstart_seconds, tmax=self.tstop_seconds)
-
-            # Truncate the events list to the 2000 MMN events
-            self.events = raw_events[:2000].copy()
-
-        raw.load_data()
+        self.raw.load_data()
         # Rename channels in raw based on actual electrode names
         # This is based on FMed_Chanlocs_6channels.ced
-        raw.rename_channels({'EXG1': 'cz', 'EXG2': 'mr', 'EXG3': 'ml', 'EXG4': 'fz', 'EXG5': 'pz', 'EXG6': 't8'})
+        self.raw.rename_channels({'EXG1': 'cz', 'EXG2': 'mr', 'EXG3': 'ml', 'EXG4': 'fz', 'EXG5': 'pz', 'EXG6': 't8'})
         # Reference electrodes
-        raw.set_eeg_reference(['mr', 'ml'])
+        self.raw.set_eeg_reference(['mr', 'ml'])
 
         # LAYOUT is the 2D display. Probably don't need this.
         #layout = mne.channels.read_layout(os.path.join(self.script_dir, 'biosemi.lay'))
@@ -146,8 +160,6 @@ class BDFWithMetadata():
         # but since we only have 6 channels, very unclear how to apply
         # any of the standard montages
         #montage = mne.channels.make_standard_montage('biosemi16')
-
-        self.raw = raw
 
         if first_run:
             # Figure out if tones are same or deviant
