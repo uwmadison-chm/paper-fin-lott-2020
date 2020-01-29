@@ -152,19 +152,18 @@ class BDFWithMetadata():
         self.raw.load_data()
         # Rename channels in raw based on actual electrode names
         # This is based on FMed_Chanlocs_6channels.ced
-        self.raw.rename_channels({'EXG1': 'cz', 'EXG2': 'mr', 'EXG3': 'ml', 'EXG4': 'fz', 'EXG5': 'pz', 'EXG6': 't8'})
-        # Reference electrodes
-        self.raw.set_eeg_reference(['mr', 'ml'])
+        # EXG2 used to be called mr and EXG3 was ml
+        # TODO: Not sure these are the right "standard" names for the mastoids
+        # so that when we load the montage below it matches
+        self.raw.rename_channels({'EXG1': 'Cz', 'EXG2': 'O1', 'EXG3': 'O2', 'EXG4': 'Fz', 'EXG5': 'Pz', 'EXG6': 'T8'})
+        # Reference electrodes on mastoids
+        self.raw.set_eeg_reference(['O1', 'O2'])
 
-        # LAYOUT is the 2D display. Probably don't need this.
-        #layout = mne.channels.read_layout(os.path.join(self.script_dir, 'biosemi.lay'))
+        # Try to hack in some layout information into the raw.info
+        # TODO: is this right?
+        montage = mne.channels.make_standard_montage('biosemi16')
+        self.raw.set_montage(montage)
         
-        # It would be nice figure out how to apply montage to the raw data,
-        # so we could get averaged displays in spatial orientation...
-        # but since we only have 6 channels, very unclear how to apply
-        # any of the standard montages
-        #montage = mne.channels.make_standard_montage('biosemi16')
-
         if first_run:
             # Figure out if tones are same or deviant
             self.load_event_tones()
@@ -175,6 +174,7 @@ class BDFWithMetadata():
 
         # If previous annotations exist, read them
         self.load_annotations()
+
 
     def save_metadata(self):
         data = {
@@ -226,7 +226,7 @@ class BDFWithMetadata():
         logging.info(f'Script start day of year = {doy}')
         # TODO: Warn if close to noon, we may be using the wrong file
 
-        # We can FINALLY guess which tone sequence .TXT file to use for assigning
+        # We can now guess which tone sequence .TXT file to use for assigning
         # tone IDs to events in the .BDF file.
 
         # This determination is based on day of the year and time of day:
@@ -292,7 +292,7 @@ class BDFWithMetadata():
         self.raw.filter(l_freq=FREQUENCY_HIGHPASS, h_freq=FREQUENCY_LOWPASS, fir_design='firwin')
 
         # Epoching...
-        picks = ['cz', 'fz', 'pz', 't8']
+        picks = ['Cz', 'Fz', 'Pz', 'T8']
         tmin, tmax = -0.1, 0.4
 
         # TODO: Do automatic rejection of spikes? Can also pass a "too-flat" rejection if needed
