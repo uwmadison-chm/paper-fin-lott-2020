@@ -9,12 +9,9 @@ from datetime import datetime, timedelta
 from matplotlib import pyplot as plt
 import mne
 
-FREQUENCY_HIGHPASS_ARTIFACT = 0.5
-FREQUENCY_HIGHPASS = 1
-FREQUENCY_LOWPASS = 35
-
 # How wide of a buffer around the crop do we want?
-BUFFER_SECONDS = 2
+# 1 second is enough with .5s epochs
+BUFFER_SECONDS = 1
 
 # Event IDs
 UNKNOWN = 1
@@ -25,17 +22,13 @@ EVENT_COLORS = {
     STANDARD: "green",
     DEVIANT: "red"
 }
-EVENT_ID = {
-    "Unknown": UNKNOWN,
-    "Standard": STANDARD,
-    "Deviant": DEVIANT
-}
-
 
 class BDFWithMetadata():
-    def __init__(self, path):
+    def __init__(self, path, kind, force=False, is_2013I=False):
         self.script_dir = sys.path[0]
         self.source_path = path
+        self.kind = kind
+        self.is_2013I = is_2013I
 
         # Determine if source path is in the standard /study/thukdam/raw-data location or not
         p = Path(path).resolve()
@@ -50,10 +43,33 @@ class BDFWithMetadata():
             dest_path = Path(os.path.join(*dest))
         else:
             dest_path = p
+            if not force:
+                # DIE unless they forced to save in current dir with a flag
+                logging.critical("Data file not stored in expected raw-data/subjects directory, please run with --force to save masks and stuff to current directory")
+                sys.exit(1)
 
-        self.output_dir = p.parent
-        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.highpass_artifact = 0.5
+        if self.is_mmn():
+            self.highpass = 1
+            self.lowpass = 35
+            self.event_id = {
+                "Unknown": UNKNOWN,
+                "Standard": STANDARD,
+                "Deviant": DEVIANT
+            }
+        else:
+            self.highpass = 100
+            self.lowpass = 3000
+            self.event_id = {
+                "Unknown": UNKNOWN,
+            }
+
+        output_dir = p.parent
+        output_dir.mkdir(parents=True, exist_ok=True)
         self.output_path = str(dest_path)
+
+    def is_mmn(self):
+        return self.kind == "mmn"
 
     def load(self):
         # Do we have existing metadata?
@@ -61,7 +77,7 @@ class BDFWithMetadata():
         self.load_existing_metadata()
         self.load_existing_events()
 
-        self.load_mmn(self.source_path)
+        self.load_file(self.source_path)
 
     def load_existing_metadata(self):
         metadata = self.artifact_metadata_file()
@@ -104,11 +120,12 @@ class BDFWithMetadata():
             self.tstop_seconds = tstop / sfreq
             duration_seconds = self.tstop_seconds - self.tstart_seconds
 
-            logging.info(f"Checked at {skipped_events}, got {duration_seconds}")
             if duration_seconds > expected_duration - BUFFER_SECONDS*2 and \
                 duration_seconds < expected_duration + BUFFER_SECONDS*2:
+                logging.info(f"Found events at {tstart} with duration {duration_seconds} after skipping {skipped_events}")
                 looking = False
             else:
+                logging.debug(f"Skipped {skipped_events}, at {tstart} with {duration_seconds} (looking for {expected_events})")
                 skipped_events += 1
 
         if looking:
@@ -122,11 +139,15 @@ class BDFWithMetadata():
 
         # Crop to those seconds
         self.raw.crop(tmin=self.tstart_seconds, tmax=self.tstop_seconds)
+        self.tstart = self.tstart_seconds * sfreq
+        self.tstop = self.tstop_seconds * sfreq
 
-        # Truncate the events list to the ones we wanted
-        self.events = raw_events[:expected_events].copy()
+        # Truncate the events list to the ones we wanted,
+        # keeping in mind we have to start at the index after the start
+        index = np.searchsorted(raw_events[:,0], self.tstart)
+        self.events = raw_events[index:index+expected_events].copy()
 
-    def load_mmn(self, raw_file):
+    def load_file(self, raw_file):
         self.raw = mne.io.read_raw_bdf(raw_file)
 
         # TODO: Original script does weird event deletion, with this comment:
@@ -141,32 +162,43 @@ class BDFWithMetadata():
 
         first_run = True
         
-        # Crop to the MMN section of the file
         if self.tstart_seconds and len(self.events) > 0:
             # If we already have information, use that
             self.raw.crop(tmin=self.tstart_seconds, tmax=self.tstop_seconds)
             first_run = False
         else:
-            self.locate_events(2000, 1000, "MMN")
+            if self.is_mmn():
+                # Crop to the MMN section of the file
+                self.locate_events(2000, 1000, self.kind)
+            else:
+                # Crop to the ABR section of the file
+                self.locate_events(4000, 200, self.kind)
 
         self.raw.load_data()
         # Rename channels in raw based on actual electrode names
         # This is based on FMed_Chanlocs_6channels.ced
-        # EXG2 used to be called mr and EXG3 was ml
-        # TODO: Not sure these are the right "standard" names for the mastoids
-        # so that when we load the montage below it matches
+        # EXG2 used to be called mr and EXG3 was ml,
+        # they are renamed to O1 and O2
+        # so that when we load the electrode montage below it matches
+
+        # TODO: This currently only works on 6chan modified files.
+        # How to deal with files with all original channels like
+        # /study/thukdam/2018/North/Practitioner Controls/FM1618_HB/FM1618_HB.bdf
+        # ???
+
         self.raw.rename_channels({'EXG1': 'Cz', 'EXG2': 'O1', 'EXG3': 'O2', 'EXG4': 'Fz', 'EXG5': 'Pz', 'EXG6': 'T8'})
         # Reference electrodes on mastoids
         self.raw.set_eeg_reference(['O1', 'O2'])
 
-        # Try to hack in some layout information into the raw.info
-        # TODO: is this right?
+        # Try to hack in some electrode location information into the raw.info
         montage = mne.channels.make_standard_montage('biosemi16')
         self.raw.set_montage(montage)
         
         if first_run:
-            # Figure out if tones are same or deviant
-            self.load_event_tones()
+            if self.is_mmn():
+                # Figure out if tones are same or deviant
+                self.load_event_tones_for_mmn()
+            # We don't need to do any hacking of events for ABR
         
             # Now we automatically save out the cropping and events metadata
             self.save_metadata()
@@ -196,12 +228,11 @@ class BDFWithMetadata():
             self.raw.set_annotations(a)
 
 
-    def load_event_tones(self):
+    def load_event_tones_for_mmn(self):
         logging.info(f"Determining MMN event types")
         # Now we need to load the right event tones and paste them into the event array
         mmnToneDir = os.path.join(self.script_dir, 'MMN_tone_sequences')
-        # TODO: Get from user input, or, better, from subject metadata - assume false for now
-        is2013Initial = False
+        is2013Initial = self.is_2013I
 
         if is2013Initial:
             # 2 seconds to account for user accepting MMN .WAV file to be played
@@ -223,8 +254,11 @@ class BDFWithMetadata():
         recordedDate = datetime.fromtimestamp(self.raw.info['meas_date'][0])
         actualStart = recordedDate + timedelta(seconds=self.tstart_seconds - secondsFromScriptStartToFirstTone)
         doy = actualStart.timetuple().tm_yday
+
         logging.info(f'Script start day of year = {doy}')
-        # TODO: Warn if close to noon, we may be using the wrong file
+        noon = actualStart.replace(hour=12, minute=0, second=0)
+        if abs(noon - actualStart).seconds < 600:
+            logging.warning(f"WARNING: start time {actualStart} is close to noon, so the event tone discovery may be wrong")
 
         # We can now guess which tone sequence .TXT file to use for assigning
         # tone IDs to events in the .BDF file.
@@ -258,22 +292,26 @@ class BDFWithMetadata():
         logging.info(f"Determined {numSameEvents} same events and {numDeviantEvents} deviant events")
 
     def artifact_mask_file(self):
-        return self.output_path.replace(".bdf", ".artifact_mask.csv")
+        return self.output_path.replace(".bdf", f".{self.kind}_artifact_mask.csv")
+
+    def plot_output_path(self, name):
+        return self.output_path.replace(".bdf", f".{self.kind}_{name}.png")
 
     def artifact_metadata_file(self):
-        return self.output_path.replace(".bdf", ".artifact_metadata.yaml")
+        return self.output_path.replace(".bdf", f".{self.kind}_artifact_metadata.yaml")
     
     def events_file(self):
-        return self.output_path.replace(".bdf", ".events.npy")
+        return self.output_path.replace(".bdf", f".{self.kind}_events.npy")
 
     def plot(self, block=True):
+        duration = 5.0
         self.raw.plot(
             block=block,
             remove_dc=True,
             events=self.events,
             event_color=EVENT_COLORS,
-            highpass=FREQUENCY_HIGHPASS_ARTIFACT,
-            duration=5.0,
+            highpass=self.highpass_artifact,
+            duration=duration,
             order=[0, 3, 4, 5], # display only the 4 channels we care about
             scalings=dict(eeg=50e-6))
 
@@ -289,17 +327,55 @@ class BDFWithMetadata():
 
     def build_epochs(self):
         # Actually do the real final filtering (happens in-place)
-        self.raw.filter(l_freq=FREQUENCY_HIGHPASS, h_freq=FREQUENCY_LOWPASS, fir_design='firwin')
+        self.raw.filter(l_freq=self.highpass, h_freq=self.lowpass, fir_design='firwin')
 
         # Epoching...
         picks = ['Cz', 'Fz', 'Pz', 'T8']
-        tmin, tmax = -0.1, 0.4
+        if self.is_mmn():
+            tmin, tmax = -0.1, 0.4
+        else:
+            tmin, tmax = -0.01, 0.015
 
-        # TODO: Do automatic rejection of spikes? Can also pass a "too-flat" rejection if needed
-        epochs_params = dict(events=self.events, event_id=EVENT_ID,
-                             tmin=tmin, tmax=tmax,
-                             picks=picks, reject=None, flat=None)
-                             #, proj=True, detrend=0)
+        epochs_params = dict(events=self.events, event_id=self.event_id,
+                            tmin=tmin, tmax=tmax,
+                            picks=picks, reject=None, flat=None)
 
         self.epochs = mne.Epochs(self.raw, **epochs_params)
         return self.epochs
+
+
+    def save_figure(self, fig, name):
+        filename = self.plot_output_path(name)
+        fig.savefig(filename)
+        logging.info(f"Saved {name} plot to {filename}")
+
+    
+    def epoch_images(self):
+        logging.warning("Plotting epoch image, VERY SLOW")
+        fig = self.epochs.plot_image(cmap="YlGnBu_r", group_by=None,
+                picks=['Cz', 'Fz', 'T8', 'Pz'], show=False)
+        save_figure(fig, "epochs")
+
+    def epoch_view(self):
+        logging.info("Loading epoch viewer...")
+        epochs.plot(block=True)
+
+    def psd(self, high_freq):
+        # Spectral density is go!
+        # https://mne.tools/stable/generated/mne.io.Raw.html#mne.io.Raw.plot_psd
+        fig = self.raw.plot_psd(0, high_freq, average=False, show=False)
+        title = f"Power spectral density for {self.kind}"
+        # TODO: How to retitle the plot?
+        self.save_figure(fig, f"psd_to_{high_freq}")
+
+    def topo(self):
+        epochs = self.epochs
+
+        deviant = epochs["Deviant"].average()
+        standard = epochs["Standard"].average()
+        joint_kwargs = dict(ts_args=dict(time_unit='s'),
+                        topomap_args=dict(time_unit='s'))
+        fig1 = deviant.plot_joint(show=False, **joint_kwargs)
+        self.save_figure(fig1, "deviant_average")
+        fig2 = standard.plot_joint(show=False, **joint_kwargs)
+        self.save_figure(fig2, "deviant_average")

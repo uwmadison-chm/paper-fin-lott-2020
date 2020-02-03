@@ -21,6 +21,10 @@ parser.add_argument('--sminusd', metavar='ELECTRODE', action='store', help="Stan
 parser.add_argument('--sminusd-mean', action='store_true', help="Mean standard minus deviant across all 4 electrodes")
 parser.add_argument('--epoch-image', action='store_true', help="Very slow colormap image of epochs")
 parser.add_argument('--epoch-view', action='store_true', help="Simple linear view of epochs, default end view")
+parser.add_argument('--psd', metavar='HZ', action='store', help="Plot power spectral density up to HZ")
+parser.add_argument('--force', action='store_true', help="Force running outside of raw-data/subjects, saving masks to current directory")
+parser.add_argument('--initial-laptop', action='store_true', help="Data is from 2013I (initial settings) north laptop after restore")
+
 
 args = parser.parse_args()
 
@@ -32,10 +36,15 @@ else:
 
 raw_file = args.input
 
-f = BDFWithMetadata(raw_file)
+f = BDFWithMetadata(raw_file, "mmn", args.force, args.initial_laptop)
 f.load()
 if not args.skip_view:
     f.artifact_rejection()
+
+
+if args.psd:
+    f.psd(int(args.psd))
+
 
 epochs = f.build_epochs()
 
@@ -68,41 +77,30 @@ if args.sminusd or args.sminusd_mean:
         if args.sminusd in standard.ch_names:
             pick = standard.ch_names.index(args.sminusd)
             fig, ax = plt.subplots(figsize=(6, 4))
-            # TODO: Invert y axis? (invert_y=True)
-            mne.viz.plot_compare_evokeds(evoked, axes=ax, picks=pick, colors=colors, split_legend=True, ci=0.95)
-            plt.show()
+            mne.viz.plot_compare_evokeds(evoked, axes=ax, picks=pick,
+                    colors=colors, split_legend=True, ci=0.95, show=False)
+            f.save_figure(fig, f"sminusd_{args.sminusd}"
         else:
             logging.warning(f"Could not find electrode '{args.sminusd}'")
 
     if args.sminusd_mean:
         picks = ['Cz', 'Fz', 'Pz', 'T8']
-        fig = mne.viz.plot_compare_evokeds(evoked, picks=picks, colors=colors, combine='mean', ci=0.95)
+        fig = mne.viz.plot_compare_evokeds(evoked, picks=picks,
+                colors=colors, combine='mean', ci=0.95, show=False)
+        f.save_figure(fig, f"sminusd_mean"
 
 
 elif args.shell:
     logging.warning("Dropping into shell, epochs are in `epochs` and the raw file wrapper is in `f`")
     from IPython import embed
     embed() 
-    sys.exit()
-
 
 elif args.epoch_image:
-    logging.warning("Plotting epoch image, VERY SLOW")
-    epochs.plot_image(cmap="YlGnBu_r")
-
+    f.epoch_images()
 
 elif args.topo:
-    deviant = epochs["Deviant"].average()
-    standard = epochs["Standard"].average()
-    joint_kwargs = dict(ts_args=dict(time_unit='s'),
-                    topomap_args=dict(time_unit='s'))
-    deviant.plot_joint(show=False, **joint_kwargs)
-    standard.plot_joint(show=False, **joint_kwargs)
-
-    #deviant.plot_topomap(times=[0.1], size=3., title='Deviant', time_unit='s')
-    #standard.plot_topomap(times=[0.1], size=3., title='Standard', time_unit='s')
+    f.topo()
 
 elif args.epoch_view:
-    logging.info("Loading epoch view...")
-    epochs.plot(block=True)
+    f.epoch_view()
 

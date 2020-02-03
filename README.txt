@@ -44,3 +44,11 @@ matching path in `/study/thukdam/intermediate_data/eeg/subjects`.
 So, you can run multiple times to progressively reject artifacts, review, and 
 produce graphs.
 
+## TODO
+
+- ABR
+- comparison statistics
+  - practitioners to themselves
+  - practitioners to each other
+  - practitioners to controls
+
