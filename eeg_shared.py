@@ -363,19 +363,27 @@ class BDFWithMetadata():
     def psd(self, high_freq):
         # Spectral density is go!
         # https://mne.tools/stable/generated/mne.io.Raw.html#mne.io.Raw.plot_psd
-        fig = self.raw.plot_psd(0, high_freq, average=False, show=False)
+        #fig = self.raw.plot_psd(0, high_freq, average=False, show=False, estimate='power')
+        fig = self.raw.plot_psd(0, high_freq, area_mode='range', show=False, n_fft=60000)
         title = f"Power spectral density for {self.kind}"
+        # TODO: How to get smaller bins?
         # TODO: How to retitle the plot?
         self.save_figure(fig, f"psd_to_{high_freq}")
 
     def topo(self):
         epochs = self.epochs
 
-        deviant = epochs["Deviant"].average()
-        standard = epochs["Standard"].average()
         joint_kwargs = dict(ts_args=dict(time_unit='s'),
-                        topomap_args=dict(time_unit='s'))
-        fig1 = deviant.plot_joint(show=False, **joint_kwargs)
-        self.save_figure(fig1, "deviant_average")
-        fig2 = standard.plot_joint(show=False, **joint_kwargs)
-        self.save_figure(fig2, "deviant_average")
+                        topomap_args=dict(time_unit='s'),
+                        show=False)
+        if self.is_mmn():
+            deviant = epochs["Deviant"].average()
+            standard = epochs["Standard"].average()
+            fig1 = deviant.plot_joint(**joint_kwargs)
+            self.save_figure(fig1, "deviant_average")
+            fig2 = standard.plot_joint(**joint_kwargs)
+            self.save_figure(fig2, "deviant_average")
+        else:
+            average = epochs.average()
+            fig = average.plot_joint(**joint_kwargs)
+            self.save_figure(fig, "epoch_average")

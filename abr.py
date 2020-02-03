@@ -22,6 +22,7 @@ parser.add_argument('--epoch-image', action='store_true', help="Very slow colorm
 parser.add_argument('--epoch-view', action='store_true', help="Simple linear view of epochs, default end view")
 parser.add_argument('--psd', metavar='HZ', action='store', help="Plot power spectral density up to HZ")
 parser.add_argument('--force', action='store_true', help="Force running outside of raw-data/subjects, saving masks to current directory")
+parser.add_argument('--all', action='store_true', help="Generate all plots")
 
 
 args = parser.parse_args()
@@ -39,8 +40,8 @@ f.load()
 if not args.skip_view:
     f.artifact_rejection()
 
-if args.psd:
-    f.psd(int(args.psd))
+if args.psd or args.all:
+    f.psd(int(args.psd or 2000))
 
 
 epochs = f.build_epochs()
@@ -53,20 +54,21 @@ if args.shell:
     sys.exit()
 
 
-elif args.topo:
+elif args.topo or args.all:
     f.topo()
 
-elif args.epoch_image:
+
+elif args.epoch_image or args.all:
     f.epoch_images()
 
 
-elif args.epoch_average:
+elif args.epoch_average or args.all:
     logging.info("Loading epoch average plot...")
     average = epochs.average()
     fig = average.plot(spatial_colors=True, show=False)
     f.save_figure(fig, "epoch_average")
 
 
-elif args.epoch_view:
+elif args.epoch_view or args.all:
     f.epoch_view()
 

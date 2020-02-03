@@ -23,6 +23,7 @@ parser.add_argument('--epoch-image', action='store_true', help="Very slow colorm
 parser.add_argument('--epoch-view', action='store_true', help="Simple linear view of epochs, default end view")
 parser.add_argument('--psd', metavar='HZ', action='store', help="Plot power spectral density up to HZ")
 parser.add_argument('--force', action='store_true', help="Force running outside of raw-data/subjects, saving masks to current directory")
+parser.add_argument('--all', action='store_true', help="Generate all plots")
 parser.add_argument('--initial-laptop', action='store_true', help="Data is from 2013I (initial settings) north laptop after restore")
 
 
@@ -42,14 +43,15 @@ if not args.skip_view:
     f.artifact_rejection()
 
 
-if args.psd:
-    f.psd(int(args.psd))
+if args.psd or args.all:
+    f.psd(int(args.psd or 120))
 
 
 epochs = f.build_epochs()
 
 
-if args.sminusd or args.sminusd_mean:
+if args.sminusd or args.sminusd_mean or args.all:
+    # TODO: Move to shared
     # Plot standard and deviant on one figure, plus plot the difference, like original matlab
     deviant = epochs["Deviant"].average()
     standard = epochs["Standard"].average()
@@ -79,15 +81,15 @@ if args.sminusd or args.sminusd_mean:
             fig, ax = plt.subplots(figsize=(6, 4))
             mne.viz.plot_compare_evokeds(evoked, axes=ax, picks=pick,
                     colors=colors, split_legend=True, ci=0.95, show=False)
-            f.save_figure(fig, f"sminusd_{args.sminusd}"
+            f.save_figure(fig, f"sminusd_{args.sminusd}")
         else:
             logging.warning(f"Could not find electrode '{args.sminusd}'")
 
-    if args.sminusd_mean:
+    if args.sminusd_mean or args.all:
         picks = ['Cz', 'Fz', 'Pz', 'T8']
         fig = mne.viz.plot_compare_evokeds(evoked, picks=picks,
                 colors=colors, combine='mean', ci=0.95, show=False)
-        f.save_figure(fig, f"sminusd_mean"
+        f.save_figure(fig[0], f"sminusd_mean")
 
 
 elif args.shell:
@@ -95,12 +97,12 @@ elif args.shell:
     from IPython import embed
     embed() 
 
-elif args.epoch_image:
+elif args.epoch_image or args.all:
     f.epoch_images()
 
-elif args.topo:
+elif args.topo or args.all:
     f.topo()
 
-elif args.epoch_view:
+elif args.epoch_view or args.all:
     f.epoch_view()
 
