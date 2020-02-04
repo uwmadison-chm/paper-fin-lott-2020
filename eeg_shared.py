@@ -13,6 +13,8 @@ import mne
 # 1 second is enough with .5s epochs
 BUFFER_SECONDS = 1
 
+HIGHPASS_ARTIFACT = 0.5
+
 # Event IDs
 UNKNOWN = 1
 STANDARD = 2
@@ -48,7 +50,7 @@ class BDFWithMetadata():
                 logging.critical("Data file not stored in expected raw-data/subjects directory, please run with --force to save masks and stuff to current directory")
                 sys.exit(1)
 
-        self.highpass_artifact = 0.5
+        self.highpass_artifact = HIGHPASS_ARTIFACT
         if self.is_mmn():
             self.highpass = 1
             self.lowpass = 35
@@ -181,18 +183,19 @@ class BDFWithMetadata():
         # they are renamed to O1 and O2
         # so that when we load the electrode montage below it matches
 
-        # TODO: This currently only works on 6chan modified files.
-        # How to deal with files with all original channels like
-        # /study/thukdam/2018/North/Practitioner Controls/FM1618_HB/FM1618_HB.bdf
-        # ???
+        if self.raw.info['nchan'] == 17:
+            # Unclear why, but in the original files, the 6 channels are duplicated
+            # MNE appends a number to differentiate the dupes
+            self.raw.rename_channels({'EXG1-0': 'Cz', 'EXG2-0': 'O1', 'EXG3-0': 'O2', 'EXG4-0': 'Fz', 'EXG5-0': 'Pz', 'EXG6-0': 'T8'})
+        else:
+            self.raw.rename_channels({'EXG1': 'Cz', 'EXG2': 'O1', 'EXG3': 'O2', 'EXG4': 'Fz', 'EXG5': 'Pz', 'EXG6': 'T8'})
 
-        self.raw.rename_channels({'EXG1': 'Cz', 'EXG2': 'O1', 'EXG3': 'O2', 'EXG4': 'Fz', 'EXG5': 'Pz', 'EXG6': 'T8'})
         # Reference electrodes on mastoids
         self.raw.set_eeg_reference(['O1', 'O2'])
 
         # Try to hack in some electrode location information into the raw.info
         montage = mne.channels.make_standard_montage('biosemi16')
-        self.raw.set_montage(montage)
+        self.raw.set_montage(montage, raise_if_subset=False)
         
         if first_run:
             if self.is_mmn():
@@ -303,8 +306,12 @@ class BDFWithMetadata():
     def events_file(self):
         return self.output_path.replace(".bdf", f".{self.kind}_events.npy")
 
-    def plot(self, block=True):
+    def plot(self, block=True, display_all=False):
         duration = 5.0
+        if display_all:
+            order = None
+        else:
+            order = [0, 3, 4, 5], # display only the 4 channels we care about
         self.raw.plot(
             block=block,
             remove_dc=True,
@@ -312,7 +319,7 @@ class BDFWithMetadata():
             event_color=EVENT_COLORS,
             highpass=self.highpass_artifact,
             duration=duration,
-            order=[0, 3, 4, 5], # display only the 4 channels we care about
+            order=order,
             scalings=dict(eeg=50e-6))
 
     def artifact_rejection(self):
