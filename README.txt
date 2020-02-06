@@ -46,9 +46,8 @@ produce graphs.
 
 ## TODO
 
-- ABR
-- comparison statistics
-  - practitioners to themselves
+- group level comparison statistics
+  - practitioners to themselves on different sessions
   - practitioners to each other
   - practitioners to controls
 

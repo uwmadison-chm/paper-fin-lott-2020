@@ -373,8 +373,6 @@ class BDFWithMetadata():
         #fig = self.raw.plot_psd(0, high_freq, average=False, show=False, estimate='power')
         fig = self.raw.plot_psd(0, high_freq, area_mode='range', show=False, n_fft=60000)
         title = f"Power spectral density for {self.kind}"
-        # TODO: How to get smaller bins?
-        # TODO: How to retitle the plot?
         self.save_figure(fig, f"psd_to_{high_freq}")
 
     def topo(self):

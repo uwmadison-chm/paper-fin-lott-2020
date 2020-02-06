@@ -51,7 +51,6 @@ epochs = f.build_epochs()
 
 
 if args.sminusd or args.sminusd_mean or args.all:
-    # TODO: Move to shared
     # Plot standard and deviant on one figure, plus plot the difference, like original matlab
     deviant = epochs["Deviant"].average()
     standard = epochs["Standard"].average()
