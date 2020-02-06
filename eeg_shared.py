@@ -353,7 +353,7 @@ class BDFWithMetadata():
 
     def save_figure(self, fig, name):
         filename = self.plot_output_path(name)
-        fig.savefig(filename)
+        fig.savefig(filename, dpi=300)
         logging.info(f"Saved {name} plot to {filename}")
 
     
@@ -387,7 +387,7 @@ class BDFWithMetadata():
             fig1 = deviant.plot_joint(**joint_kwargs)
             self.save_figure(fig1, "deviant_average")
             fig2 = standard.plot_joint(**joint_kwargs)
-            self.save_figure(fig2, "deviant_average")
+            self.save_figure(fig2, "standard_average")
         else:
             average = epochs.average()
             fig = average.plot_joint(**joint_kwargs)

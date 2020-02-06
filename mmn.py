@@ -74,17 +74,37 @@ if args.sminusd or args.sminusd_mean or args.all:
     # @agramfort in mne-tools/mne-python gitter said: "to have confidence intervals you need repetitions which I think is a list of evoked or not epochs you need to pass" 
     # May want to do something more like: https://mne.tools/stable/auto_examples/stats/plot_sensor_regression.html?highlight=plot_compare_evokeds
 
+    def plot_sminusd(electrode, auto=True):
+        pick = standard.ch_names.index(electrode)
+        fig, ax = plt.subplots(figsize=(6, 4))
+        if auto:
+            name = "auto"
+            mne.viz.plot_compare_evokeds(evoked, axes=ax, picks=pick,
+                colors=colors, split_legend=True, ci=0.95, show=False)
+        else:
+            name = "2.5"
+            mne.viz.plot_compare_evokeds(evoked, axes=ax, picks=pick,
+                colors=colors, split_legend=True, ci=0.95, show=False, ylim=dict(eeg=[-2.5, 2.5]))
+
+        f.save_figure(fig, f"sminusd_{name}_{electrode}")
+
+    if args.all:
+        plot_sminusd("Cz")
+        plot_sminusd("Fz")
+        plot_sminusd("Pz")
+        plot_sminusd("T8")
+        plot_sminusd("Cz", False)
+        plot_sminusd("Fz", False)
+        plot_sminusd("Pz", False)
+        plot_sminusd("T8", False)
+
     if args.sminusd:
         if args.sminusd in standard.ch_names:
-            pick = standard.ch_names.index(args.sminusd)
-            fig, ax = plt.subplots(figsize=(6, 4))
-            mne.viz.plot_compare_evokeds(evoked, axes=ax, picks=pick,
-                    colors=colors, split_legend=True, ci=0.95, show=False)
-            f.save_figure(fig, f"sminusd_{args.sminusd}")
+            plot_sminusd(args.sminusd)
         else:
             logging.warning(f"Could not find electrode '{args.sminusd}'")
 
-    if args.sminusd_mean or args.all:
+    if args.sminusd_mean:
         picks = ['Cz', 'Fz', 'Pz', 'T8']
         fig = mne.viz.plot_compare_evokeds(evoked, picks=picks,
                 colors=colors, combine='mean', ci=0.95, show=False)
