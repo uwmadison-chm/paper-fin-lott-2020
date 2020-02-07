@@ -88,7 +88,11 @@ class BDFWithMetadata():
                 data = yaml.load(file, Loader=yaml.FullLoader)
                 self.tstart_seconds = data['tstart_seconds']
                 self.tstop_seconds = data['tstop_seconds']
-                logging.info(f"Loaded existing start {self.tstart_seconds} and end {self.tstop_seconds} from {metadata}")
+                if 'highpass' in data:
+                    self.highpass = data['highpass']
+                if 'lowpass' in data:
+                    self.lowpass = data['lowpass']
+                logging.info(f"Loaded existing start {self.tstart_seconds} and end {self.tstop_seconds} from {metadata}, frequencies are {self.highpass}Hz to {self.lowpass}Hz")
         else:
             self.tstart_seconds = None
             self.tstop_seconds = None
@@ -215,7 +219,10 @@ class BDFWithMetadata():
         data = {
             'tstart_seconds': int(self.tstart_seconds),
             'tstop_seconds': int(self.tstop_seconds),
-            'source_path': int(self.tstop_seconds),
+            'source_path': self.source_path,
+            'highpass_artifact': self.highpass_artifact,
+            'highpass': self.highpass,
+            'lowpass': self.lowpass,
         }
         with open(self.artifact_metadata_file(), 'w') as file:
             yaml.dump(data, file)
