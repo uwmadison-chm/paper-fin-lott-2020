@@ -28,29 +28,47 @@ EVENT_COLORS = {
 class BDFWithMetadata():
     def __init__(self, path, kind, force=False, is_2013I=False):
         self.script_dir = sys.path[0]
-        self.source_path = path
         self.kind = kind
         self.is_2013I = is_2013I
 
-        # Determine if source path is in the standard /study/thukdam/raw-data location or not
+        # Determine if source path is in the standard /study/thukdam/raw-data/subjects location or not
         p = Path(path).resolve()
+        self.source_path = str(p)
         parts = p.parts
         if "raw-data" in parts and "subjects" in parts:
-            # If "raw-data", "subjects" is in path, replace "raw-data" with "intermediate_data", "eeg"
+            # If "raw-data", "subjects" is in path, replace "raw-data" with "analyses", "eeg"
             dest = list(parts)
             raw_index = dest.index('raw-data')
-            dest[raw_index] = "intermediate_data"
-            dest.insert(raw_index+1, "eeg")
-            # Create directory if it doesn't exist
-            dest_path = Path(os.path.join(*dest))
+            dest[raw_index] = "analyses"
+            dest.insert(raw_index+1, "eeg_artifacts")
+            dest[raw_index+2] = kind
+            dest.remove("biosemi")
+            dest[-1] = dest[-1].replace(".bdf", "")
+
+            artifact_path = Path(os.path.join(*dest))
+            dest[raw_index+1] = "eeg_plots"
+            plot_path = Path(os.path.join(*dest))
         else:
-            dest_path = p
+            artifact_path = p
+            plot_path = p
             if not force:
                 # DIE unless they forced to save in current dir with a flag
-                logging.critical("Data file not stored in expected raw-data/subjects directory, please run with --force to save masks and stuff to current directory")
+                logging.critical("Data file not stored in expected raw-data/subjects directory, please run with --force to save masks and plots and stuff to current directory")
                 sys.exit(1)
 
+        output_dir = p.parent
+        self.artifact_path = str(artifact_path)
+        self.plot_path = str(plot_path)
+
+        logging.info(f"Saving artifacts to {self.artifact_path}")
+        logging.info(f"Saving plots to {self.plot_path}")
+
+        # Create directories if they don't exist
+        artifact_path.parent.mkdir(parents=True, exist_ok=True)
+        plot_path.parent.mkdir(parents=True, exist_ok=True)
+
         self.highpass_artifact = HIGHPASS_ARTIFACT
+
         if self.is_mmn():
             self.highpass = 1
             self.lowpass = 35
@@ -66,16 +84,11 @@ class BDFWithMetadata():
                 "Unknown": UNKNOWN,
             }
 
-        output_dir = p.parent
-        output_dir.mkdir(parents=True, exist_ok=True)
-        self.output_path = str(dest_path)
-
     def is_mmn(self):
         return self.kind == "mmn"
 
     def load(self):
         # Do we have existing metadata?
-        metadata = self.artifact_metadata_file()
         self.load_existing_metadata()
         self.load_existing_events()
 
@@ -302,16 +315,16 @@ class BDFWithMetadata():
         logging.info(f"Determined {numSameEvents} same events and {numDeviantEvents} deviant events")
 
     def artifact_mask_file(self):
-        return self.output_path.replace(".bdf", f".{self.kind}_artifact_mask.csv")
-
-    def plot_output_path(self, name):
-        return self.output_path.replace(".bdf", f".{self.kind}_{name}.png")
+        return self.artifact_path + f".{self.kind}_artifact_mask.csv"
 
     def artifact_metadata_file(self):
-        return self.output_path.replace(".bdf", f".{self.kind}_artifact_metadata.yaml")
+        return self.artifact_path + f".{self.kind}_artifact_metadata.yaml"
     
     def events_file(self):
-        return self.output_path.replace(".bdf", f".{self.kind}_events.npy")
+        return self.artifact_path + f".{self.kind}_events.npy"
+
+    def plot_output_path(self, name):
+        return self.plot_path + f".{self.kind}_{name}.png"
 
     def plot(self, block=True, display_all=False):
         duration = 5.0
