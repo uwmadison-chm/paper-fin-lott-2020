@@ -4,6 +4,7 @@ import csv
 import numpy as np
 import logging
 import yaml
+import pytz
 from pathlib import Path
 from datetime import datetime, timedelta
 from matplotlib import pyplot as plt
@@ -273,8 +274,13 @@ class BDFWithMetadata():
             mmnToneFileStart = os.path.join(mmnToneDir, 'north', 'MMN_roving_with_trigger_dpdb01_seed_10')
             mmnToneFileEnd = '_21-Dec-2012_tone_sequence.txt'
 
-        # TODO: check if this matches Matlab script, may need to convert from GMT
-        recordedDate = datetime.fromtimestamp(self.raw.info['meas_date'][0])
+        # NOTE: This code matches what the original Matlab script does,
+        # but note that we're assuming UTC which feels... strange.
+        meas_date = self.raw.info['meas_date'][0]
+        logging.info(f'Measured date string in BDF file is {meas_date}')
+        recordedDate = datetime.fromtimestamp(meas_date, pytz.timezone("UTC"))
+
+        logging.info(f'Recorded date is {recordedDate}')
         actualStart = recordedDate + timedelta(seconds=self.tstart_seconds - secondsFromScriptStartToFirstTone)
         doy = actualStart.timetuple().tm_yday
 
@@ -285,6 +291,7 @@ class BDFWithMetadata():
 
         # We can now guess which tone sequence .TXT file to use for assigning
         # tone IDs to events in the .BDF file.
+        logging.info(f'Script actual start is {actualStart}')
 
         # This determination is based on day of the year and time of day:
         if (actualStart.hour >= 12):
@@ -391,7 +398,7 @@ class BDFWithMetadata():
         # Spectral density is go!
         # https://mne.tools/stable/generated/mne.io.Raw.html#mne.io.Raw.plot_psd
         #fig = self.raw.plot_psd(0, high_freq, average=False, show=False, estimate='power')
-        fig = self.raw.plot_psd(0, high_freq, area_mode='range', show=False, n_fft=60000)
+        fig = self.raw.plot_psd(0, high_freq, area_mode='std', show=False, n_fft=60000)
         title = f"Power spectral density for {self.kind}"
         self.save_figure(fig, f"psd_to_{high_freq}")
 

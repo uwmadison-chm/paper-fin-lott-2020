@@ -25,6 +25,8 @@ parser.add_argument('--psd', metavar='HZ', action='store', help="Plot power spec
 parser.add_argument('--force', action='store_true', help="Force running outside of raw-data/subjects, saving masks to current directory")
 parser.add_argument('--all', action='store_true', help="Generate all plots")
 parser.add_argument('--initial-laptop', action='store_true', help="Data is from 2013I (initial settings) north laptop after restore")
+parser.add_argument('--bandpass-from', metavar='HZ', action='store', help="Lower frequency of bandpass (default is 1)")
+parser.add_argument('--bandpass-to', metavar='HZ', action='store', help="Higher frequency of bandpass (default is 35)")
 
 
 args = parser.parse_args()
@@ -39,6 +41,12 @@ raw_file = args.input
 
 f = BDFWithMetadata(raw_file, "mmn", args.force, args.initial_laptop)
 f.load()
+if args.bandpass_from:
+    f.highpass = float(args.bandpass_from)
+    logging.info(f"Overriding highpass frequency of band to {f.highpass}Hz")
+if args.bandpass_to:
+    f.lowpass = float(args.bandpass_to)
+    logging.info(f"Overriding lowpass frequency of band to {f.lowpass}Hz")
 if not args.skip_view:
     f.artifact_rejection()
 
