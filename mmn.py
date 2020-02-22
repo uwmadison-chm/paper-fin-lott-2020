@@ -27,6 +27,10 @@ parser.add_argument('--all', action='store_true', help="Generate all plots")
 parser.add_argument('--initial-laptop', action='store_true', help="Data is from 2013I (initial settings) north laptop after restore")
 parser.add_argument('--bandpass-from', metavar='HZ', action='store', help="Lower frequency of bandpass (default is 1)")
 parser.add_argument('--bandpass-to', metavar='HZ', action='store', help="Higher frequency of bandpass (default is 35)")
+parser.add_argument('--no-reference', action='store_true', help="Do not reference mastoids")
+parser.add_argument('--no-events', action='store_true', help="Do not show events")
+parser.add_argument('--display-huge', action='store_true', help="Zoom way out to display entire file")
+parser.add_argument('--no-notch', action='store_true', help="Do not notch filter at 50Hz")
 
 
 args = parser.parse_args()
@@ -39,7 +43,7 @@ else:
 
 raw_file = args.input
 
-f = BDFWithMetadata(raw_file, "mmn", args.force, args.initial_laptop)
+f = BDFWithMetadata(raw_file, "mmn", args.force, is_2013I=args.initial_laptop, no_reference=args.no_reference, no_notch=(args.no_notch or args.skip_view))
 f.load()
 if args.bandpass_from:
     f.highpass = float(args.bandpass_from)
@@ -48,7 +52,7 @@ if args.bandpass_to:
     f.lowpass = float(args.bandpass_to)
     logging.info(f"Overriding lowpass frequency of band to {f.lowpass}Hz")
 if not args.skip_view:
-    f.artifact_rejection()
+    f.artifact_rejection(args.display_huge, args.no_events)
 
 
 if args.psd or args.all:
@@ -56,6 +60,7 @@ if args.psd or args.all:
 
 
 epochs = f.build_epochs()
+epochs.decimate(3)
 
 
 if args.sminusd or args.sminusd_mean or args.all:
@@ -85,14 +90,21 @@ if args.sminusd or args.sminusd_mean or args.all:
     def plot_sminusd(electrode, auto=True):
         pick = standard.ch_names.index(electrode)
         fig, ax = plt.subplots(figsize=(6, 4))
+        kwargs = dict(axes=ax, picks=pick,
+            truncate_yaxis=False,
+            truncate_xaxis=False,
+            colors=colors,
+            split_legend=True,
+            legend='lower right',
+            show_sensors=False,
+            ci=0.95,
+            show=False)
         if auto:
             name = "auto"
-            mne.viz.plot_compare_evokeds(evoked, axes=ax, picks=pick,
-                colors=colors, split_legend=True, ci=0.95, show=False)
+            mne.viz.plot_compare_evokeds(evoked,  **kwargs)
         else:
             name = "2.5"
-            mne.viz.plot_compare_evokeds(evoked, axes=ax, picks=pick,
-                colors=colors, split_legend=True, ci=0.95, show=False, ylim=dict(eeg=[-2.5, 2.5]))
+            mne.viz.plot_compare_evokeds(evoked, ylim=dict(eeg=[-2.5, 2.5]), **kwargs)
 
         f.save_figure(fig, f"sminusd_{name}_{electrode}")
 

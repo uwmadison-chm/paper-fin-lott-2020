@@ -27,10 +27,12 @@ EVENT_COLORS = {
 }
 
 class BDFWithMetadata():
-    def __init__(self, path, kind, force=False, is_2013I=False):
+    def __init__(self, path, kind, force=False, is_2013I=False, no_reference=False, no_notch=False):
         self.script_dir = sys.path[0]
         self.kind = kind
         self.is_2013I = is_2013I
+        self.no_reference = no_reference
+        self.no_notch = no_notch
 
         # Determine if source path is in the standard /study/thukdam/raw-data/subjects location or not
         p = Path(path).resolve()
@@ -209,11 +211,21 @@ class BDFWithMetadata():
             self.raw.rename_channels({'EXG1': 'Cz', 'EXG2': 'O1', 'EXG3': 'O2', 'EXG4': 'Fz', 'EXG5': 'Pz', 'EXG6': 'T8'})
 
         # Reference electrodes on mastoids
-        self.raw.set_eeg_reference(['O1', 'O2'])
+        if self.no_reference:
+            logging.warning("Not referencing mastoids, raw view")
+        else:
+            self.raw.set_eeg_reference(['O1', 'O2'])
 
         # Try to hack in some electrode location information into the raw.info
         montage = mne.channels.make_standard_montage('biosemi16')
         self.raw.set_montage(montage, raise_if_subset=False)
+
+        # Notch out the India power frequency unless told not to
+        if self.no_notch:
+            logging.info("Not notch filtering at 50Hz")
+        else:
+            logging.info("Notch filtering at 50Hz")
+            self.raw.notch_filter(np.arange(50, 251, 50))
         
         if first_run:
             if self.is_mmn():
@@ -333,25 +345,39 @@ class BDFWithMetadata():
     def plot_output_path(self, name):
         return self.plot_path + f".{self.kind}_{name}.png"
 
-    def plot(self, block=True, display_all=False):
-        duration = 5.0
-        if display_all:
-            order = None
+    def plot(self, block=True, display_huge=False, no_events=False):
+        if display_huge:
+            if self.is_mmn:
+                duration = 1000.0
+            else:
+                duration = 200.0
+            scalings = dict(eeg=150e-6)
+            events = None
         else:
-            order = [0, 3, 4, 5], # display only the 4 channels we care about
+            duration = 5.0
+            scalings = dict(eeg=50e-6)
+            events = self.events
+
+        if no_events:
+            events = None
+
+        order = [1, 2, 3, 0, 4, 5]
+        n_channels = 7
+
         self.raw.plot(
             block=block,
+            n_channels=n_channels,
             remove_dc=True,
-            events=self.events,
+            events=events,
             event_color=EVENT_COLORS,
             highpass=self.highpass_artifact,
             duration=duration,
             order=order,
-            scalings=dict(eeg=50e-6))
+            scalings=scalings)
 
-    def artifact_rejection(self):
+    def artifact_rejection(self, display_huge=False, no_events=False):
         logging.info("View loaded. Ready for artifact rejection! Press 'a' to start, add a label, and then drag on the graph. Close the view window to continue.")
-        self.plot()
+        self.plot(display_huge=display_huge, no_events=no_events)
 
         mask_path = self.artifact_mask_file()
 
