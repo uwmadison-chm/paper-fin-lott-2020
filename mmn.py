@@ -87,7 +87,7 @@ if args.sminusd or args.sminusd_mean or args.all:
     # @agramfort in mne-tools/mne-python gitter said: "to have confidence intervals you need repetitions which I think is a list of evoked or not epochs you need to pass" 
     # May want to do something more like: https://mne.tools/stable/auto_examples/stats/plot_sensor_regression.html?highlight=plot_compare_evokeds
 
-    def plot_sminusd(electrode, auto=True):
+    def plot_sminusd(electrode, scale=2.5, auto=False):
         pick = standard.ch_names.index(electrode)
         fig, ax = plt.subplots(figsize=(6, 4))
         kwargs = dict(axes=ax, picks=pick,
@@ -103,20 +103,24 @@ if args.sminusd or args.sminusd_mean or args.all:
             name = "auto"
             mne.viz.plot_compare_evokeds(evoked,  **kwargs)
         else:
-            name = "2.5"
-            mne.viz.plot_compare_evokeds(evoked, ylim=dict(eeg=[-2.5, 2.5]), **kwargs)
+            name = str(scale)
+            mne.viz.plot_compare_evokeds(evoked, ylim=dict(eeg=[-1 * scale, scale]), **kwargs)
 
         f.save_figure(fig, f"sminusd_{name}_{electrode}")
 
     if args.all:
-        plot_sminusd("Cz")
-        plot_sminusd("Fz")
-        plot_sminusd("Pz")
-        plot_sminusd("T8")
-        plot_sminusd("Cz", False)
-        plot_sminusd("Fz", False)
-        plot_sminusd("Pz", False)
-        plot_sminusd("T8", False)
+        plot_sminusd("Cz", 2.5)
+        plot_sminusd("Fz", 2.5)
+        plot_sminusd("Pz", 2.5)
+        plot_sminusd("T8", 2.5)
+        plot_sminusd("Cz", 5.0)
+        plot_sminusd("Fz", 5.0)
+        plot_sminusd("Pz", 5.0)
+        plot_sminusd("T8", 5.0)
+        plot_sminusd("Cz", auto=True)
+        plot_sminusd("Fz", auto=True)
+        plot_sminusd("Pz", auto=True)
+        plot_sminusd("T8", auto=True)
 
     if args.sminusd:
         if args.sminusd in standard.ch_names:
