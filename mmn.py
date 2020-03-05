@@ -30,6 +30,7 @@ parser.add_argument('--bandpass-to', metavar='HZ', action='store', help="Higher 
 parser.add_argument('--no-reference', action='store_true', help="Do not reference mastoids")
 parser.add_argument('--no-events', action='store_true', help="Do not show events")
 parser.add_argument('--display-huge', action='store_true', help="Zoom way out to display entire file")
+parser.add_argument('--no-crop', action='store_true', help="Do not crop file")
 parser.add_argument('--no-notch', action='store_true', help="Do not notch filter at 50Hz")
 
 
@@ -43,7 +44,7 @@ else:
 
 raw_file = args.input
 
-f = BDFWithMetadata(raw_file, "mmn", args.force, is_2013I=args.initial_laptop, no_reference=args.no_reference, no_notch=(args.no_notch or args.skip_view))
+f = BDFWithMetadata(raw_file, "mmn", args.force, is_2013I=args.initial_laptop, no_reference=args.no_reference, no_notch=(args.no_notch or args.skip_view), no_crop=args.no_crop)
 f.load()
 if args.bandpass_from:
     f.highpass = float(args.bandpass_from)
@@ -60,7 +61,12 @@ if args.psd or args.all:
 
 
 epochs = f.build_epochs()
-epochs.decimate(3)
+# Only decimate if srate is high
+if f.raw.info['sfreq'] > 16000:
+    logging.info("Decimating epochs in memory")
+    epochs.decimate(3)
+else:
+    logging.info("File already decimated, not decimating")
 
 
 if args.sminusd or args.sminusd_mean or args.all:

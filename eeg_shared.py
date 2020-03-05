@@ -27,12 +27,13 @@ EVENT_COLORS = {
 }
 
 class BDFWithMetadata():
-    def __init__(self, path, kind, force=False, is_2013I=False, no_reference=False, no_notch=False):
+    def __init__(self, path, kind, force=False, is_2013I=False, no_reference=False, no_notch=False, no_crop=False):
         self.script_dir = sys.path[0]
         self.kind = kind
         self.is_2013I = is_2013I
         self.no_reference = no_reference
         self.no_notch = no_notch
+        self.no_crop = no_crop
 
         # Determine if source path is in the standard /study/thukdam/raw-data/subjects location or not
         p = Path(path).resolve()
@@ -156,8 +157,8 @@ class BDFWithMetadata():
             # Temporarily set our events to the full list for plotting
             self.events = raw_events.copy()
             self.plot(False)
-            self.tstart_seconds = input(f"Enter {kind} start time (in seconds): ")
-            self.tstop_seconds = input(f"Enter {kind} stop time (in seconds): ")
+            self.tstart_seconds = int(input(f"Enter {kind} start time (in seconds): "))
+            self.tstop_seconds = int(input(f"Enter {kind} stop time (in seconds): "))
 
         # Crop to those seconds
         self.raw.crop(tmin=self.tstart_seconds, tmax=self.tstop_seconds)
@@ -188,7 +189,7 @@ class BDFWithMetadata():
             # If we already have information, use that
             self.raw.crop(tmin=self.tstart_seconds, tmax=self.tstop_seconds)
             first_run = False
-        else:
+        elif not self.no_crop:
             if self.is_mmn():
                 # Crop to the MMN section of the file
                 self.locate_events(2000, 1000, self.kind)
@@ -227,7 +228,10 @@ class BDFWithMetadata():
             logging.info("Notch filtering at 50Hz")
             self.raw.notch_filter(np.arange(50, 251, 50))
         
-        if first_run:
+        if self.no_crop:
+            logging.warning("Not cropping, so not doing any artifcat or event loading")
+            return
+        elif first_run:
             if self.is_mmn():
                 # Figure out if tones are same or deviant
                 self.load_event_tones_for_mmn()

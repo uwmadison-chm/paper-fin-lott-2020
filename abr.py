@@ -27,6 +27,7 @@ parser.add_argument('--bandpass-from', metavar='HZ', action='store', help="Lower
 parser.add_argument('--bandpass-to', metavar='HZ', action='store', help="Higher frequency of bandpass (default is 3000)")
 parser.add_argument('--no-reference', action='store_true', help="Do not reference mastoids")
 parser.add_argument('--display-huge', action='store_true', help="Zoom way out to display entire file")
+parser.add_argument('--no-crop', action='store_true', help="Do not crop file")
 parser.add_argument('--no-notch', action='store_true', help="Do not notch filter at 50Hz")
 
 
@@ -40,7 +41,7 @@ else:
 
 raw_file = args.input
 
-f = BDFWithMetadata(raw_file, "abr", args.force, no_reference=args.no_reference, no_notch=(args.no_notch or args.skip_view))
+f = BDFWithMetadata(raw_file, "abr", args.force, no_reference=args.no_reference, no_notch=(args.no_notch or args.skip_view), no_crop=args.no_crop)
 f.load()
 if args.bandpass_from:
     f.highpass = float(args.bandpass_from)
