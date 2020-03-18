@@ -136,6 +136,10 @@ class BDFWithMetadata():
         skipped_events = 0
         looking = True
 
+        logging.info(f"Found {len(raw_events)} total events in file.")
+        if len(raw_events) < expected_events:
+            logging.fatal(f"Not enough events to find {expected_events}, exiting!")
+            sys.exit(1)
         while looking and len(raw_events) - skipped_events >= expected_events:
             tstart = (raw_events[skipped_events,0] - (sfreq * BUFFER_SECONDS))
             self.tstart_seconds = tstart / sfreq
@@ -153,7 +157,8 @@ class BDFWithMetadata():
 
         if looking:
             # Sorry if this sucks in actual use, bit of a rush to get this all working
-            logging.warning(f"Could not find {expected_events} {kind} events automatically, skipped {skipped_events} while trying. Please scroll and find start and stop time in seconds manually!")
+            logging.warning(f"Could not find {expected_events} {kind} events automatically, skipped {skipped_events} while trying.")
+            logging.warning(f"Please scroll and find start and stop time in seconds manually!")
             # Temporarily set our events to the full list for plotting
             self.events = raw_events.copy()
             self.plot(False)
@@ -229,7 +234,7 @@ class BDFWithMetadata():
             self.raw.notch_filter(np.arange(50, 251, 50))
         
         if self.no_crop:
-            logging.warning("Not cropping, so not doing any artifcat or event loading")
+            logging.warning("Not cropping, so not doing any artifact or event loading")
             return
         elif first_run:
             if self.is_mmn():
