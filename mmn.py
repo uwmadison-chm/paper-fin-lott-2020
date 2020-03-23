@@ -74,7 +74,7 @@ if args.sminusd or args.sminusd_mean or args.all:
     deviant = epochs["Deviant"].average()
     standard = epochs["Standard"].average()
 
-    difference = mne.combine_evoked([deviant, -standard], weights='equal')
+    difference = mne.combine_evoked([standard, -deviant], weights='equal')
 
     evoked = dict()
     evoked["Standard"] = standard

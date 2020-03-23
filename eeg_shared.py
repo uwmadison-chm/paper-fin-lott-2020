@@ -15,6 +15,10 @@ import mne
 BUFFER_SECONDS = 1
 
 HIGHPASS_ARTIFACT = 0.5
+HIGHPASS_MMN = 1
+LOWPASS_MMN = 35
+HIGHPASS_ABR = 100
+LOWPASS_ABR = 3000
 
 # Event IDs
 UNKNOWN = 1
@@ -74,19 +78,26 @@ class BDFWithMetadata():
         self.highpass_artifact = HIGHPASS_ARTIFACT
 
         if self.is_mmn():
-            self.highpass = 1
-            self.lowpass = 35
+            self.highpass = HIGHPASS_MMN
+            self.lowpass = LOWPASS_MMN
             self.event_id = {
                 "Unknown": UNKNOWN,
                 "Standard": STANDARD,
                 "Deviant": DEVIANT
             }
         else:
-            self.highpass = 100
-            self.lowpass = 3000
+            self.highpass = HIGHPASS_ABR
+            self.lowpass = LOWPASS_ABR
             self.event_id = {
                 "Unknown": UNKNOWN,
             }
+
+    def is_standard_frequencies(self):
+        if self.is_mmn():
+            return self.highpass == HIGHPASS_MMN and self.lowpass == LOWPASS_MMN
+        else:
+            return self.highpass == HIGHPASS_ABR and self.lowpass == LOWPASS_ABR
+        
 
     def is_mmn(self):
         return self.kind == "mmn"
@@ -413,8 +424,11 @@ class BDFWithMetadata():
         return self.epochs
 
 
-    def save_figure(self, fig, name):
-        filename = self.plot_output_path(name)
+    def save_figure(self, fig, name, force_name=False):
+        if self.is_standard_frequencies() or force_name:
+            filename = self.plot_output_path(name)
+        else:
+            filename = self.plot_output_path(f"{name}_{self.highpass}Hz_to_{self.lowpass}Hz")
         fig.savefig(filename, dpi=300)
         logging.info(f"Saved {name} plot to {filename}")
 
@@ -435,7 +449,7 @@ class BDFWithMetadata():
         #fig = self.raw.plot_psd(0, high_freq, average=False, show=False, estimate='power')
         fig = self.raw.plot_psd(0, high_freq, area_mode='std', show=False, n_fft=60000)
         title = f"Power spectral density for {self.kind}"
-        self.save_figure(fig, f"psd_to_{high_freq}")
+        self.save_figure(fig, f"psd_to_{high_freq}", True)
 
     def topo(self):
         epochs = self.epochs
