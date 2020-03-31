@@ -41,6 +41,7 @@ else:
 
 raw_file = args.input
 
+
 f = BDFWithMetadata(raw_file, "abr", args.force, no_reference=args.no_reference, no_notch=(args.no_notch or args.skip_view), no_crop=args.no_crop)
 f.load()
 if args.bandpass_from:
@@ -66,21 +67,48 @@ if args.shell:
     sys.exit()
 
 
-elif args.topo or args.all:
+if args.topo or args.all:
     f.topo()
 
 
-elif args.epoch_image or args.all:
+
+if args.epoch_average or args.all:
+    logging.info("Building epoch average plots...")
+    average = epochs.average()
+
+    def plot_average(electrode, scale=2.5, auto=False):
+        pick = average.ch_names.index(electrode)
+        fig, ax = plt.subplots(figsize=(6, 4))
+        kwargs = dict(axes=ax, picks=pick,
+            show=False)
+        if auto:
+            name = "auto"
+            fig = average.plot(**kwargs)
+        else:
+            name = str(scale)
+            fig = average.plot(ylim=dict(eeg=[-1 * scale, scale]), **kwargs)
+        f.save_figure(fig, f"epoch_average_{name}_{electrode}")
+
+    logging.info("Saving epoch average with spatial colors")
+    fig = average.plot(spatial_colors=True, show=False)
+    f.save_figure(fig, "epoch_average_spatial")
+
+    logging.info("Plotting individual electrode averages")
+    plot_average("Cz", 2.5)
+    plot_average("Fz", 2.5)
+    plot_average("Pz", 2.5)
+    plot_average("T8", 2.5)
+    plot_average("Cz", auto=True)
+    plot_average("Fz", auto=True)
+    plot_average("Pz", auto=True)
+    plot_average("T8", auto=True)
+
+
+
+if args.epoch_image:
     f.epoch_images()
 
 
-elif args.epoch_average or args.all:
-    logging.info("Loading epoch average plot...")
-    average = epochs.average()
-    fig = average.plot(spatial_colors=True, show=False)
-    f.save_figure(fig, "epoch_average")
-
-
-elif args.epoch_view or args.all:
+if args.epoch_view:
     f.epoch_view()
 

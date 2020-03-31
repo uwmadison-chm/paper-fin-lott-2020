@@ -173,8 +173,8 @@ class BDFWithMetadata():
             # Temporarily set our events to the full list for plotting
             self.events = raw_events.copy()
             self.plot(False)
-            self.tstart_seconds = int(input(f"Enter {kind} start time (in seconds): "))
-            self.tstop_seconds = int(input(f"Enter {kind} stop time (in seconds): "))
+            self.tstart_seconds = float(input(f"Enter {kind} start time (in seconds): "))
+            self.tstop_seconds = float(input(f"Enter {kind} stop time (in seconds): "))
 
         # Crop to those seconds
         self.raw.crop(tmin=self.tstart_seconds, tmax=self.tstop_seconds)
