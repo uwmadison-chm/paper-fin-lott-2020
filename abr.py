@@ -79,8 +79,11 @@ if args.epoch_average or args.all:
     def plot_average(electrode, scale=2.5, auto=False):
         pick = average.ch_names.index(electrode)
         fig, ax = plt.subplots(figsize=(6, 4))
+        ax.axvline(x=0, linewidth=0.5, color='black')
+        ax.axhline(y=0, linewidth=0.5, color='black')
         kwargs = dict(axes=ax, picks=pick,
-            show=False)
+                titles=dict(eeg=electrode),
+                show=False)
         if auto:
             name = "auto"
             fig = average.plot(**kwargs)

@@ -56,9 +56,13 @@ class BDFWithMetadata():
             artifact_path = Path(os.path.join(*dest))
             dest[raw_index+1] = "eeg_plots"
             plot_path = Path(os.path.join(*dest))
+
+            dest[raw_index+1] = "eeg_statistics"
+            statistics_path = Path(os.path.join(*dest))
         else:
             artifact_path = p
             plot_path = p
+            statistics_path = p
             if not force:
                 # DIE unless they forced to save in current dir with a flag
                 logging.critical("Data file not stored in expected raw-data/subjects directory, please run with --force to save masks and plots and stuff to current directory")
@@ -67,13 +71,16 @@ class BDFWithMetadata():
         output_dir = p.parent
         self.artifact_path = str(artifact_path)
         self.plot_path = str(plot_path)
+        self.statistics_path = str(statistics_path)
 
         logging.info(f"Saving artifacts to {self.artifact_path}")
         logging.info(f"Saving plots to {self.plot_path}")
+        logging.info(f"Saving statistics to {self.statistics_path}")
 
         # Create directories if they don't exist
         artifact_path.parent.mkdir(parents=True, exist_ok=True)
         plot_path.parent.mkdir(parents=True, exist_ok=True)
+        statistics_path.parent.mkdir(parents=True, exist_ok=True)
 
         self.highpass_artifact = HIGHPASS_ARTIFACT
 
@@ -438,6 +445,16 @@ class BDFWithMetadata():
         fig = self.epochs.plot_image(cmap="YlGnBu_r", group_by=None,
                 picks=['Cz', 'Fz', 'T8', 'Pz'], show=False)
         save_figure(fig, "epochs")
+
+
+    def average_output_path(self):
+        return self.statistics_path + f".{self.kind}-ave.fif"
+
+    def save_average(self):
+        filename = self.average_output_path()
+        average = self.epochs.average()
+        mne.write_evokeds(filename, average)
+        logging.info(f"Saved evoked averages to {filename}")
 
     def epoch_view(self):
         logging.info("Loading epoch viewer...")

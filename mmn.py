@@ -23,7 +23,8 @@ parser.add_argument('--epoch-image', action='store_true', help="Very slow colorm
 parser.add_argument('--epoch-view', action='store_true', help="Simple linear view of epochs, default end view")
 parser.add_argument('--psd', metavar='HZ', action='store', help="Plot power spectral density up to HZ")
 parser.add_argument('--force', action='store_true', help="Force running outside of raw-data/subjects, saving masks to current directory")
-parser.add_argument('--all', action='store_true', help="Generate all plots")
+parser.add_argument('--save-average', action='store_true', help="Save averaged evoked epochs in a standard MNE file")
+parser.add_argument('--all', action='store_true', help="Generate all plots and save average evoked epochs")
 parser.add_argument('--initial-laptop', action='store_true', help="Data is from 2013I (initial settings) north laptop after restore")
 parser.add_argument('--bandpass-from', metavar='HZ', action='store', help="Lower frequency of bandpass (default is 1)")
 parser.add_argument('--bandpass-to', metavar='HZ', action='store', help="Higher frequency of bandpass (default is 35)")
@@ -154,4 +155,7 @@ elif args.topo or args.all:
 
 elif args.epoch_view or args.all:
     f.epoch_view()
+
+elif args.save_average or args.all:
+    f.save_average()
 
