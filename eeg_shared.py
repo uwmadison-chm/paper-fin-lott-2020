@@ -447,14 +447,25 @@ class BDFWithMetadata():
         save_figure(fig, "epochs")
 
 
-    def average_output_path(self):
-        return self.statistics_path + f".{self.kind}-ave.fif"
+    def average_output_path(self, name):
+        return self.statistics_path + f".{self.kind}-{name}-ave.fif"
 
     def save_average(self):
-        filename = self.average_output_path()
+        if self.is_mmn():
+            deviant = self.epochs["Deviant"].average()
+            dfile = self.average_output_path("deviant")
+            logging.info(f"Saved evoked averages of deviant events to {dfile}")
+            mne.write_evokeds(dfile, deviant)
+
+            standard = self.epochs["Standard"].average()
+            sfile = self.average_output_path("standard")
+            mne.write_evokeds(sfile, standard)
+            logging.info(f"Saved evoked averages of standard events to {sfile}")
+
         average = self.epochs.average()
-        mne.write_evokeds(filename, average)
-        logging.info(f"Saved evoked averages to {filename}")
+        afile = self.average_output_path("all")
+        mne.write_evokeds(afile, average)
+        logging.info(f"Saved evoked averages to {afile}")
 
     def epoch_view(self):
         logging.info("Loading epoch viewer...")
