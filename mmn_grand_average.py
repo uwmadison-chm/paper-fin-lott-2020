@@ -123,8 +123,9 @@ plot_sminusd("Fz", 5.0)
 plot_sminusd("Pz", 5.0)
 plot_sminusd("T8", 5.0)
 
-plot_sminusd(None, auto=True)
-plot_sminusd(None, 2.5)
-plot_sminusd(None, 5.0)
+# Robin sez no need for cross-electrode averages
+# plot_sminusd(None, auto=True)
+# plot_sminusd(None, 2.5)
+# plot_sminusd(None, 5.0)
 
 

@@ -99,8 +99,9 @@ plot("Fz", 5.0)
 plot("Pz", 5.0)
 plot("T8", 5.0)
 
-plot(None, auto=True)
-plot(None, 2.5)
-plot(None, 5.0)
+# Robin sez no need for cross-electrode averages
+# plot(None, auto=True)
+# plot(None, 2.5)
+# plot(None, 5.0)
 
 
