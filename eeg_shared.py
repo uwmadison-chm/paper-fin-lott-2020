@@ -31,11 +31,13 @@ EVENT_COLORS = {
 }
 
 class BDFWithMetadata():
-    def __init__(self, path, kind, force=False, is_2013I=False, no_reference=False, no_notch=False, no_crop=False):
+    def __init__(self, path, kind, force=False, is_2013I=False, no_reference=False, reference_o1=False, reference_o2=False, no_notch=False, no_crop=False):
         self.script_dir = sys.path[0]
         self.kind = kind
         self.is_2013I = is_2013I
         self.no_reference = no_reference
+        self.reference_o1 = reference_o1
+        self.reference_o2 = reference_o2
         self.no_notch = no_notch
         self.no_crop = no_crop
 
@@ -238,7 +240,14 @@ class BDFWithMetadata():
         if self.no_reference:
             logging.warning("Not referencing mastoids, raw view")
         else:
-            self.raw.set_eeg_reference(['O1', 'O2'])
+            if self.reference_o1:
+                logging.warning("Referencing only O1")
+                self.raw.set_eeg_reference(['O1'])
+            elif self.reference_o2:
+                logging.warning("Referencing only O2")
+                self.raw.set_eeg_reference(['O2'])
+            else:
+                self.raw.set_eeg_reference(['O1', 'O2'])
 
         # Try to hack in some electrode location information into the raw.info
         montage = mne.channels.make_standard_montage('biosemi16')

@@ -29,6 +29,8 @@ parser.add_argument('--initial-laptop', action='store_true', help="Data is from 
 parser.add_argument('--bandpass-from', metavar='HZ', action='store', help="Lower frequency of bandpass (default is 1)")
 parser.add_argument('--bandpass-to', metavar='HZ', action='store', help="Higher frequency of bandpass (default is 35)")
 parser.add_argument('--no-reference', action='store_true', help="Do not reference mastoids")
+parser.add_argument('--reference-o1', action='store_true', help="Only reference o1 mastoid")
+parser.add_argument('--reference-o2', action='store_true', help="Only reference o2 mastoid")
 parser.add_argument('--no-events', action='store_true', help="Do not show events")
 parser.add_argument('--display-huge', action='store_true', help="Zoom way out to display entire file")
 parser.add_argument('--no-crop', action='store_true', help="Do not crop file")
@@ -45,7 +47,7 @@ else:
 
 raw_file = args.input
 
-f = BDFWithMetadata(raw_file, "mmn", args.force, is_2013I=args.initial_laptop, no_reference=args.no_reference, no_notch=(args.no_notch or args.skip_view), no_crop=args.no_crop)
+f = BDFWithMetadata(raw_file, "mmn", args.force, is_2013I=args.initial_laptop, no_reference=args.no_reference, reference_o1=args.reference_o1, reference_o2=args.reference_o2, no_notch=(args.no_notch or args.skip_view), no_crop=args.no_crop)
 f.load()
 if args.bandpass_from:
     f.highpass = float(args.bandpass_from)
