@@ -17,8 +17,8 @@ parser.add_argument('-v', '--verbose', action='count', default=0)
 parser.add_argument('--skip-view', action='store_true', help="Skip viewing file and editing artifact mask")
 parser.add_argument('--topo', action='store_true', help="Topo map")
 parser.add_argument('--shell', action='store_true', help="Drop into an interactive ipython environment")
-parser.add_argument('--sminusd', metavar='ELECTRODE', action='store', help="Standard minus deviant of a specified electrode (Cz, Fz, T8, Pz)")
-parser.add_argument('--sminusd-mean', action='store_true', help="Mean standard minus deviant across all 4 electrodes")
+parser.add_argument('--dms', metavar='ELECTRODE', action='store', help="Deviant minus standard of a specified electrode (Cz, Fz, T8, Pz)")
+parser.add_argument('--dms-mean', action='store_true', help="Mean deviant minus standard across all 4 electrodes")
 parser.add_argument('--epoch-image', action='store_true', help="Very slow colormap image of epochs")
 parser.add_argument('--epoch-view', action='store_true', help="Simple linear view of epochs, default end view")
 parser.add_argument('--psd', metavar='HZ', action='store', help="Plot power spectral density up to HZ")
@@ -72,12 +72,12 @@ else:
     logging.info("File already decimated, not decimating")
 
 
-if args.sminusd or args.sminusd_mean or args.all:
-    # Plot standard and deviant on one figure, plus plot the difference, like original matlab
+if args.dms or args.dms_mean or args.all:
+    # Plot standard and deviant on one figure, plus plot the deviant minus standard difference, like original matlab
     deviant = epochs["Deviant"].average()
     standard = epochs["Standard"].average()
 
-    difference = mne.combine_evoked([standard, -deviant], weights='equal')
+    difference = mne.combine_evoked([deviant, -standard], weights='equal')
 
     evoked = dict()
     evoked["Standard"] = standard
@@ -96,7 +96,7 @@ if args.sminusd or args.sminusd_mean or args.all:
     # @agramfort in mne-tools/mne-python gitter said: "to have confidence intervals you need repetitions which I think is a list of evoked or not epochs you need to pass" 
     # May want to do something more like: https://mne.tools/stable/auto_examples/stats/plot_sensor_regression.html?highlight=plot_compare_evokeds
 
-    def plot_sminusd(electrode, scale=2.5, auto=False):
+    def plot_dms(electrode, scale=2.5, auto=False):
         pick = standard.ch_names.index(electrode)
         fig, ax = plt.subplots(figsize=(6, 4))
         kwargs = dict(axes=ax, picks=pick,
@@ -115,33 +115,33 @@ if args.sminusd or args.sminusd_mean or args.all:
             name = str(scale)
             mne.viz.plot_compare_evokeds(evoked, ylim=dict(eeg=[-1 * scale, scale]), **kwargs)
 
-        f.save_figure(fig, f"sminusd_{name}_{electrode}")
+        f.save_figure(fig, f"dms_{name}_{electrode}")
 
     if args.all:
-        plot_sminusd("Cz", 2.5)
-        plot_sminusd("Fz", 2.5)
-        plot_sminusd("Pz", 2.5)
-        plot_sminusd("T8", 2.5)
-        plot_sminusd("Cz", 5.0)
-        plot_sminusd("Fz", 5.0)
-        plot_sminusd("Pz", 5.0)
-        plot_sminusd("T8", 5.0)
-        plot_sminusd("Cz", auto=True)
-        plot_sminusd("Fz", auto=True)
-        plot_sminusd("Pz", auto=True)
-        plot_sminusd("T8", auto=True)
+        plot_dms("Cz", 2.5)
+        plot_dms("Fz", 2.5)
+        plot_dms("Pz", 2.5)
+        plot_dms("T8", 2.5)
+        plot_dms("Cz", 5.0)
+        plot_dms("Fz", 5.0)
+        plot_dms("Pz", 5.0)
+        plot_dms("T8", 5.0)
+        plot_dms("Cz", auto=True)
+        plot_dms("Fz", auto=True)
+        plot_dms("Pz", auto=True)
+        plot_dms("T8", auto=True)
 
-    if args.sminusd:
-        if args.sminusd in standard.ch_names:
-            plot_sminusd(args.sminusd)
+    if args.dms:
+        if args.dms in standard.ch_names:
+            plot_dms(args.dms)
         else:
-            logging.warning(f"Could not find electrode '{args.sminusd}'")
+            logging.warning(f"Could not find electrode '{args.dms}'")
 
-    if args.sminusd_mean:
+    if args.dms_mean:
         picks = ['Cz', 'Fz', 'Pz', 'T8']
         fig = mne.viz.plot_compare_evokeds(evoked, picks=picks,
                 colors=colors, combine='mean', ci=0.95, show=False)
-        f.save_figure(fig[0], f"sminusd_mean")
+        f.save_figure(fig[0], f"dms_mean")
 
 
 elif args.shell:
@@ -149,15 +149,15 @@ elif args.shell:
     from IPython import embed
     embed() 
 
-elif args.epoch_image or args.all:
+if args.epoch_image or args.all:
     f.epoch_images()
 
-elif args.topo or args.all:
+if args.topo or args.all:
     f.topo()
 
-elif args.epoch_view or args.all:
+if args.epoch_view or args.all:
     f.epoch_view()
 
-elif args.save_average or args.all:
+if args.save_average or args.all:
     f.save_average()
 

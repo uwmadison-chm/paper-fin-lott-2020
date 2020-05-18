@@ -36,6 +36,10 @@ class BDFWithMetadata():
         self.kind = kind
         self.is_2013I = is_2013I
         self.no_reference = no_reference
+        # Both is the default, so set them to false
+        if reference_o1 and reference_o2:
+            reference_o1 = False
+            reference_o2 = False
         self.reference_o1 = reference_o1
         self.reference_o2 = reference_o2
         self.no_notch = no_notch
@@ -51,7 +55,14 @@ class BDFWithMetadata():
             raw_index = dest.index('raw-data')
             dest[raw_index] = "analyses"
             dest.insert(raw_index+1, "eeg_artifacts")
-            dest[raw_index+2] = kind
+
+            # Kind is MMN or ABR, but now we want to allow for O1/O2 only referencing
+            subfolder = kind
+            if self.reference_o1:
+                subfolder += "-o1"
+            if self.reference_o2:
+                subfolder += "-o2"
+            dest[raw_index+2] = subfolder
             dest.remove("biosemi")
             dest[-1] = dest[-1].replace(".bdf", "")
 
@@ -118,8 +129,17 @@ class BDFWithMetadata():
 
         self.load_file(self.source_path)
 
+    def strip_reference_electrode(self, path):
+        return path.replace("-o1", "").replace("-o2", "")
+
     def load_existing_metadata(self):
         metadata = self.artifact_metadata_file()
+
+        # If we can't find the file at the default path, try stripping out -o1 or -o2
+        # to get the "previous" mask with both reference electrodes
+        if not os.path.exists(metadata):
+            metadata = self.strip_reference_electrode(metadata)
+
         if os.path.exists(metadata):
             with open(metadata) as file:
                 data = yaml.load(file, Loader=yaml.FullLoader)
@@ -136,6 +156,12 @@ class BDFWithMetadata():
 
     def load_existing_events(self):
         e = self.events_file()
+
+        # If we can't find the file at the default path, try stripping out -o1 or -o2
+        # to get the "previous" events file from the artifact rejection with both reference electrodes
+        if not os.path.exists(e):
+            e = self.strip_reference_electrode(e)
+
         if os.path.exists(e):
             self.events = np.load(e)
             logging.info(f"Loaded {len(self.events)} from events numpy file {e}")
@@ -294,6 +320,12 @@ class BDFWithMetadata():
 
     def load_annotations(self):
         mask_path = self.artifact_mask_file()
+
+        # If we can't find the file at the default path, try stripping out -o1 or -o2
+        # to get the "previous" mask file from the previous artifact rejection process
+        if not os.path.exists(mask_path):
+            mask_path = self.strip_reference_electrode(mask_path)
+
         if os.path.exists(mask_path):
             logging.info(f"Loading existing artifact annotations from {mask_path}")
             a = mne.read_annotations(mask_path)

@@ -62,10 +62,11 @@ for sid in args.subject:
     standard += mne.read_evokeds(standard_file, baseline=BASELINE)
     deviant += mne.read_evokeds(deviant_file, baseline=BASELINE)
 
+from IPython import embed; embed()
 all_average = mne.combine_evoked(total, weights='nave')
 standard_average = mne.combine_evoked(standard, weights='nave')
 deviant_average = mne.combine_evoked(deviant, weights='nave')
-difference_average = mne.combine_evoked([standard_average, -deviant_average], weights='equal')
+difference_average = mne.combine_evoked([deviant_average, -standard_average], weights='equal')
 
 logging.info(f"Read {args.subject} from {INPUT_DIR}, creating plots in {OUTPUT_DIR}")
 
@@ -76,7 +77,7 @@ evoked["Difference"] = difference_average
 
 colors = dict(Standard="Green", Deviant="Red", Difference="Black")
 
-def plot_sminusd(electrode, scale=2.5, auto=False):
+def plot_dms(electrode, scale=2.5, auto=False):
     if electrode is None:
         pick = "all"
         electrode = "all"
@@ -110,22 +111,22 @@ def plot_sminusd(electrode, scale=2.5, auto=False):
     fig.savefig(filename, dpi=300)
     logging.info(f"Plot for mmn grand average on {electrode} saved to {filename}")
 
-plot_sminusd("Cz", auto=True)
-plot_sminusd("Fz", auto=True)
-plot_sminusd("Pz", auto=True)
-plot_sminusd("T8", auto=True)
-plot_sminusd("Cz", 2.5)
-plot_sminusd("Fz", 2.5)
-plot_sminusd("Pz", 2.5)
-plot_sminusd("T8", 2.5)
-plot_sminusd("Cz", 5.0)
-plot_sminusd("Fz", 5.0)
-plot_sminusd("Pz", 5.0)
-plot_sminusd("T8", 5.0)
+plot_dms("Cz", auto=True)
+plot_dms("Fz", auto=True)
+plot_dms("Pz", auto=True)
+plot_dms("T8", auto=True)
+plot_dms("Cz", 2.5)
+plot_dms("Fz", 2.5)
+plot_dms("Pz", 2.5)
+plot_dms("T8", 2.5)
+plot_dms("Cz", 5.0)
+plot_dms("Fz", 5.0)
+plot_dms("Pz", 5.0)
+plot_dms("T8", 5.0)
 
 # Robin sez no need for cross-electrode averages
-# plot_sminusd(None, auto=True)
-# plot_sminusd(None, 2.5)
-# plot_sminusd(None, 5.0)
+# plot_dms(None, auto=True)
+# plot_dms(None, 2.5)
+# plot_dms(None, 5.0)
 
 
