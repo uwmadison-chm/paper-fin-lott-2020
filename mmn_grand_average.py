@@ -13,6 +13,8 @@ import mne
 
 # Baseline to the average of the section from the start of the epoch to the event
 BASELINE = (None, 0.1)
+# Expected number of samples in a decimated statistics file
+EXPECTED_SAMPLES = 2731
 
 timestamp = datetime.datetime.now().isoformat()
 
@@ -32,6 +34,7 @@ else:
 INPUT_DIR = "/study/thukdam/analyses/eeg_statistics/mmn"
 OUTPUT_DIR = f"/study/thukdam/analyses/eeg_statistics/mmn/plots/{args.name}"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+GOOD_TIMES = None
 
 with open(f"{OUTPUT_DIR}/README.txt", 'w') as f:
     f.write(' '.join(sys.argv) + "\n\n")
@@ -40,6 +43,27 @@ with open(f"{OUTPUT_DIR}/README.txt", 'w') as f:
         f.write("%s\n" % item)
 
 logging.info(f"Reading {args.subject} from {INPUT_DIR} and writing to {OUTPUT_DIR}")
+
+def read_evokeds(f):
+    global GOOD_TIMES
+    es = mne.read_evokeds(f, baseline=BASELINE)
+    if es[0].data.shape[1] != EXPECTED_SAMPLES:
+        """
+        Now, we're expecting a certain sample rate so that we end up with 2731 samples from these arrays.
+        But we have old cruddy data that has been decimated differently.
+        So we resample and force the timepoints to be identical (there's a little jitter)
+
+        So far we only hit one file, so I am being a bad person and hard coding a resampling rate
+        that will get files like that one to match. If this does NOT fix future files, we'll have
+        to figure out how to get at the sample rate of the MNE Evoked lists, and do it dynamically.
+        Couldn't find it in a few hours of poking.
+        """
+        logging.warning(f"Resampling on {f}, did not get expected decimated statistics length {EXPECTED_SAMPLES}")
+        es[0].resample(5441)
+        es[0].times = GOOD_TIMES
+    else:
+        GOOD_TIMES = es[0].times
+    return es
 
 total = []
 standard = []
@@ -58,9 +82,9 @@ for sid in args.subject:
     standard_file = find_file("standard")
     deviant_file = find_file("deviant")
 
-    total+= mne.read_evokeds(total_file, baseline=BASELINE)
-    standard += mne.read_evokeds(standard_file, baseline=BASELINE)
-    deviant += mne.read_evokeds(deviant_file, baseline=BASELINE)
+    total += read_evokeds(total_file)
+    standard += read_evokeds(standard_file)
+    deviant += read_evokeds(deviant_file)
 
 all_average = mne.combine_evoked(total, weights='nave')
 standard_average = mne.combine_evoked(standard, weights='nave')
