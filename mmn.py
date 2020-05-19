@@ -66,8 +66,12 @@ if args.psd or args.all:
 epochs = f.build_epochs()
 # Only decimate if srate is high
 if f.raw.info['sfreq'] > 16000:
-    logging.info("Decimating epochs in memory")
-    epochs.decimate(3)
+    # All the data was just reduced by a factor of 3 because that fits in memory better
+    # In the future, we probably want to reduce down to 512hz as the manual process did
+    # factor = f.raw.info['sfreq'] / 512
+    factor = 3
+    logging.info(f"Decimating epochs in memory by a factor of {factor}")
+    epochs.decimate(factor)
 else:
     logging.info("File already decimated, not decimating")
 
@@ -149,13 +153,13 @@ elif args.shell:
     from IPython import embed
     embed() 
 
-if args.epoch_image or args.all:
+if args.epoch_image:
     f.epoch_images()
 
-if args.topo or args.all:
+if args.topo:
     f.topo()
 
-if args.epoch_view or args.all:
+if args.epoch_view:
     f.epoch_view()
 
 if args.save_average or args.all:

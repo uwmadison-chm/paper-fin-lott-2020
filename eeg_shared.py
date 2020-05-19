@@ -485,7 +485,7 @@ class BDFWithMetadata():
         logging.warning("Plotting epoch image, VERY SLOW")
         fig = self.epochs.plot_image(cmap="YlGnBu_r", group_by=None,
                 picks=['Cz', 'Fz', 'T8', 'Pz'], show=False)
-        save_figure(fig, "epochs")
+        self.save_figure(fig, "epochs")
 
 
     def average_output_path(self, name):

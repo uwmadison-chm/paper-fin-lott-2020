@@ -62,7 +62,6 @@ for sid in args.subject:
     standard += mne.read_evokeds(standard_file, baseline=BASELINE)
     deviant += mne.read_evokeds(deviant_file, baseline=BASELINE)
 
-from IPython import embed; embed()
 all_average = mne.combine_evoked(total, weights='nave')
 standard_average = mne.combine_evoked(standard, weights='nave')
 deviant_average = mne.combine_evoked(deviant, weights='nave')
