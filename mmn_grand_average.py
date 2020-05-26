@@ -21,6 +21,7 @@ timestamp = datetime.datetime.now().isoformat()
 parser = argparse.ArgumentParser(description='Automate FMed study grand averaging of MMN.')
 parser.add_argument('-v', '--verbose', action='count', default=0)
 parser.add_argument('-n', '--name', default=timestamp.replace(":","."))
+parser.add_argument('--debug', action="store_true")
 parser.add_argument('subject', nargs='+')
 
 args = parser.parse_args()
@@ -59,6 +60,7 @@ def read_evokeds(f):
         Couldn't find it in a few hours of poking.
         """
         logging.warning(f"Resampling on {f}, did not get expected decimated statistics length {EXPECTED_SAMPLES}")
+
         es[0].resample(5441)
         es[0].times = GOOD_TIMES
     else:
@@ -86,10 +88,14 @@ for sid in args.subject:
     standard += read_evokeds(standard_file)
     deviant += read_evokeds(deviant_file)
 
+if args.debug:
+    from IPython import embed; embed()
+
 all_average = mne.combine_evoked(total, weights='nave')
 standard_average = mne.combine_evoked(standard, weights='nave')
 deviant_average = mne.combine_evoked(deviant, weights='nave')
 difference_average = mne.combine_evoked([deviant_average, -standard_average], weights='equal')
+
 
 logging.info(f"Read {args.subject} from {INPUT_DIR}, creating plots in {OUTPUT_DIR}")
 

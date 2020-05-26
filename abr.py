@@ -100,6 +100,10 @@ if args.epoch_average or args.all:
     f.save_figure(fig, "epoch_average_spatial")
 
     logging.info("Plotting individual electrode averages")
+    plot_average("Cz", 0.25)
+    plot_average("Fz", 0.25)
+    plot_average("Pz", 0.25)
+    plot_average("T8", 0.25)
     plot_average("Cz", 2.5)
     plot_average("Fz", 2.5)
     plot_average("Pz", 2.5)
