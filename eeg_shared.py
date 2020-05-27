@@ -462,7 +462,7 @@ class BDFWithMetadata():
         if self.is_mmn():
             tmin, tmax = -0.1, 0.4
         else:
-            tmin, tmax = -0.01, 0.015
+            tmin, tmax = -0.002, 0.010
 
         epochs_params = dict(events=self.events, event_id=self.event_id,
                             tmin=tmin, tmax=tmax,
