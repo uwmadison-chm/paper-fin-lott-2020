@@ -73,6 +73,7 @@ def plot(electrode, scale=2.5, auto=False):
 
     kwargs = dict(axes=ax, picks=pick,
         titles=dict(eeg=electrode),
+        time_unit="ms",
         show=False)
 
     if auto:
@@ -94,6 +95,10 @@ plot("Cz", 0.25)
 plot("Fz", 0.25)
 plot("Pz", 0.25)
 plot("T8", 0.25)
+plot("Cz", 1.0)
+plot("Fz", 1.0)
+plot("Pz", 1.0)
+plot("T8", 1.0)
 plot("Cz", 2.5)
 plot("Fz", 2.5)
 plot("Pz", 2.5)
