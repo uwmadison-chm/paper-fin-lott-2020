@@ -12,6 +12,7 @@ from scipy import stats
 from scipy import integrate
 import mne
 import csv
+from statsmodels.stats.weightstats import ttest_ind
 
 # Mutated from mmn_grand_average.py to do statistics
 
@@ -73,6 +74,7 @@ def load_group(group):
     total = []
     standard = []
     deviant = []
+    weights = []
     for sid in group:
         # Find the statistics files for this subject
         def find_file(kind):
@@ -95,17 +97,18 @@ def load_group(group):
     pairs = zip(deviant, standard)
     difference = [ mne.combine_evoked([d, -s], weights='equal') for (d,s) in pairs ]
 
+    nave = [ x.nave for x in total ]
+
     return {
         'total': total,
         'standard': standard,
         'deviant': deviant,
         'difference': difference,
+        'nave': nave,
     }
 
 data1 = load_group(group1)
 data2 = load_group(group2)
-
-
 
 
 def amplitude(electrode, evoked, window_start_ms, window_end_ms):
@@ -146,6 +149,31 @@ group2_difference_fz = get_amplitudes('Fz', data2['difference'])
 group1_difference_cz = get_amplitudes('Cz', data1['difference'])
 group2_difference_cz = get_amplitudes('Cz', data2['difference'])
 
+# Store "good" trial counts for each participant and electrode...
+# We have to do this per-electrode to calculate weights when 
+# rejecting specific electrodes.
+group1_nave_fz = list(data1['nave'])
+group1_nave_cz = list(data1['nave'])
+group2_nave_fz = list(data2['nave'])
+group2_nave_cz = list(data2['nave'])
+
+# Remove Fz data from FM1618
+remove = group1.index('FM1618')
+del group1_difference_fz[remove]
+del group1_nave_fz[remove]
+
+def calc_weights(nave):
+    # Calculate weights by # of trials not rejected
+    total_weight = sum(nave)
+    return [ (x / total_weight) * len(nave) for x in nave ]
+
+group1_weights_cz = calc_weights(group1_nave_cz)
+group1_weights_fz = calc_weights(group1_nave_fz)
+
+group2_weights_cz = calc_weights(group2_nave_cz)
+group2_weights_fz = calc_weights(group2_nave_fz)
+
+
 if args.debug:
     from IPython import embed; embed()
 
@@ -153,20 +181,25 @@ if args.debug:
 
 OUTPUT_DIR = "/study/thukdam/analyses/eeg_statistics/mmn/stats"
 
-def dump_csv(name, subjects, fz, cz):
+def dump_csv(name, subjects, fz, wfz, cz, wcz):
     with open(f"{OUTPUT_DIR}/{name}.csv", 'w', newline='') as csvfile:
         out = csv.writer(csvfile)
-        out.writerow(['ID', 'Fz area amplitude', 'Cz area amplitude'])
-        tuples = zip(subjects, fz, cz)
+        out.writerow(['ID', 'Fz area amplitude', 'Fz weight', 'Cz area amplitude', 'Cz weight'])
+        tuples = zip(subjects, fz, wfz, cz, wcz)
         for x in tuples:
             out.writerow(list(x))
 
-dump_csv(group1_name, group1, group1_difference_fz, group1_difference_cz)
-dump_csv(group2_name, group2, group2_difference_fz, group2_difference_cz)
+dump_csv(group1_name, group1, group1_difference_fz, group1_weights_fz, group1_difference_cz, group1_weights_cz)
+dump_csv(group2_name, group2, group2_difference_fz, group2_weights_fz, group2_difference_cz, group2_weights_cz)
 
 
 # And now, do a simple t test across those groups
 
-print(f"Group difference T test on fz: {stats.ttest_ind(group1_difference_fz, group2_difference_fz)}\n")
-print(f"Group difference T test on cz: {stats.ttest_ind(group1_difference_cz, group2_difference_cz)}\n")
+def ttest(g1, g2, w1, w2):
+    # output = ttest_ind(g1, g2, usevar='unequal')
+    output = ttest_ind(g1, g2, usevar='unequal', weights=(w1, w2))
+    return output
+
+print(f"Group difference T test on fz: {ttest(group1_difference_fz, group2_difference_fz, group1_weights_fz, group2_weights_fz)}\n")
+print(f"Group difference T test on cz: {ttest(group1_difference_cz, group2_difference_cz, group1_weights_cz, group2_weights_cz)}\n")
 
