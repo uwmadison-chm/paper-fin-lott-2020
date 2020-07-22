@@ -136,11 +136,8 @@ def peak_distance(electrode, evoked,
 
 
 def get_peaks(electrode, data):
-    # ABR_START = 2
-    # ABR_MID = 6
-    # ABR_END = 10
-    ABR_START = 4
-    ABR_MID = 7
+    ABR_START = 2
+    ABR_MID = 6
     ABR_END = 10
     return [ peak_distance(electrode, x, ABR_START, ABR_MID, ABR_MID, ABR_END) for x in data ]
 
