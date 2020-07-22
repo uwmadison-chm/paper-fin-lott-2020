@@ -121,13 +121,8 @@ def peak_distance(electrode, evoked,
     min_window, _ = crop(electrode, evoked, min_window_start_ms, min_window_end_ms)
     max_window, _ = crop(electrode, evoked, max_window_start_ms, max_window_end_ms)
 
-    # Instead of the default threshold taking (max - min) / 4, we have more data, so use it all
-    # to find the threshold for both windows
-    data = np.concatenate((min_window, max_window))
-    thresh = (max(data) - min(data))/4
-
-    low_locs, low_mags = mne.preprocessing.peak_finder(min_window, thresh=thresh, extrema=-1)
-    high_locs, high_mags = mne.preprocessing.peak_finder(max_window, thresh=thresh, extrema=1)
+    low_locs, low_mags = mne.preprocessing.peak_finder(min_window, extrema=-1)
+    high_locs, high_mags = mne.preprocessing.peak_finder(max_window, extrema=1)
 
     if len(high_mags) == 0:
         high_mags = [0]
