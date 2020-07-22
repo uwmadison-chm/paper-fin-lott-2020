@@ -124,11 +124,6 @@ def peak_distance(electrode, evoked,
     low_locs, low_mags = mne.preprocessing.peak_finder(min_window, extrema=-1)
     high_locs, high_mags = mne.preprocessing.peak_finder(max_window, extrema=1)
 
-    if len(high_mags) == 0:
-        high_mags = [0]
-    if len(low_mags) == 0:
-        low_mags = [0]
-
     minimum = min(low_mags)
     maximum = max(high_mags)
 
