@@ -54,7 +54,7 @@ for sid in args.subject:
 
     total_file = find[0]
 
-    total+= mne.read_evokeds(total_file, baseline=BASELINE)
+    total += mne.read_evokeds(total_file, baseline=BASELINE)
 
 all_average = mne.combine_evoked(total, weights='nave')
 
