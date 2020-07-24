@@ -114,27 +114,35 @@ def get_amplitudes(electrode, data):
 
 
 
-def peak_distance(electrode, evoked,
-        min_window_start_ms, min_window_end_ms,
-        max_window_start_ms, max_window_end_ms):
+def peak_duration(electrode, evoked,
+        window_start_ms, window_end_ms):
 
-    min_window, _ = crop(electrode, evoked, min_window_start_ms, min_window_end_ms)
-    max_window, _ = crop(electrode, evoked, max_window_start_ms, max_window_end_ms)
+    window, _ = crop(electrode, evoked, window_start_ms, window_end_ms)
+    data, _ = crop(electrode, evoked, 0, 10)
 
-    low_locs, low_mags = mne.preprocessing.peak_finder(min_window, extrema=-1)
-    high_locs, high_mags = mne.preprocessing.peak_finder(max_window, extrema=1)
+    pos_locs, pos_mags = mne.preprocessing.peak_finder(window, extrema=1)
 
-    minimum = min(low_mags)
-    maximum = max(high_mags)
+    # Find the biggest peak
+    peak = max(pos_mags)
 
-    return maximum - minimum
+    # Now find where it crosses zero on either side
+    peak_loc = np.where(data == peak)[0][0]
+    zero_crossings = np.where(np.diff(np.sign(data)))[0]
+
+    right = np.where(zero_crossings>peak_loc)[0][0]
+    left = right - 1
+    point1 = zero_crossings[left]
+    point2 = zero_crossings[right]
+
+    # It doesn't matter what the scale is, this is currently at the scale of samples.
+    # But since we are just using it for a t-test, distance in sample count is fine.
+    return point2 - point1
 
 
 def get_peaks(electrode, data):
-    ABR_START = 2
-    ABR_MID = 6
-    ABR_END = 10
-    return [ peak_distance(electrode, x, ABR_START, ABR_MID, ABR_MID, ABR_END) for x in data ]
+    ABR_START = 4
+    ABR_END = 8
+    return [ peak_duration(electrode, x, ABR_START, ABR_END) for x in data ]
 
 
 group1_peak_fz = get_peaks('Fz', data1['total'])
@@ -182,6 +190,16 @@ def ttest(g1, g2, w1, w2):
 print(f"Welch's T test on fz area under difference curve: {ttest(group1_fz, group2_fz, group1_weights, group2_weights)}\n")
 print(f"Welch's T test on cz area under difference curve: {ttest(group1_cz, group2_cz, group1_weights, group2_weights)}\n")
 
-print(f"Welch's T test on fz peak-to-peak: {ttest(group1_peak_fz, group2_peak_fz, group1_weights, group2_weights)}\n")
-print(f"Welch's T test on cz peak-to-peak: {ttest(group1_peak_cz, group2_peak_cz, group1_weights, group2_weights)}\n")
+print(f"Welch's T test on fz duration of max peak: {ttest(group1_peak_fz, group2_peak_fz, group1_weights, group2_weights)}\n")
+print(f"Welch's T test on cz duration of max peak: {ttest(group1_peak_cz, group2_peak_cz, group1_weights, group2_weights)}\n")
 
+# Weight the stats proportionally by the weights we calculated, as the T-test is doing above
+wg1f = np.multiply(group1_peak_fz, group1_weights) / 16384 * 1000
+wg2f = np.multiply(group2_peak_fz, group2_weights) / 16384 * 1000
+wg1c = np.multiply(group1_peak_cz, group1_weights) / 16384 * 1000
+wg2c = np.multiply(group2_peak_cz, group2_weights) / 16384 * 1000
+
+print(f"Group 1 [{group1_name}] fz peak duration mean: {np.mean(wg1f)} std: {np.std(wg1f)}")
+print(f"Group 1 [{group1_name}] cz peak duration mean: {np.mean(wg1c)} std: {np.std(wg1c)}")
+print(f"Group 2 [{group2_name}] fz peak duration mean: {np.mean(wg2f)} std: {np.std(wg2f)}")
+print(f"Group 2 [{group2_name}] cz peak duration mean: {np.mean(wg2c)} std: {np.std(wg2c)}")

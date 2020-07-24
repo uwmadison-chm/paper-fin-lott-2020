@@ -131,10 +131,11 @@ def amplitude(electrode, evoked, window_start_ms, window_end_ms):
 
     # Now, instead of combining the evoked data using an average,
     # we calculate area under the curve / s
-    # NOTE: Pretty sure this is resulting in seconds as the unit, not ms,
-    # but since that's what the MNE Evoked objects think in, seems fine
+    # NOTE: this is resulting in uV * seconds as the unit, not ms
     area = integrate.simps(data_window, times_window)
-    return area
+
+    # Now, we multiply by 1000 to get ms and divide by the length of the window to get uV
+    return area * 1000 / (window_end_ms - window_start_ms)
 
 
 def get_amplitudes(electrode, data):
@@ -203,3 +204,13 @@ def ttest(g1, g2, w1, w2):
 print(f"Group difference T test on fz: {ttest(group1_difference_fz, group2_difference_fz, group1_weights_fz, group2_weights_fz)}\n")
 print(f"Group difference T test on cz: {ttest(group1_difference_cz, group2_difference_cz, group1_weights_cz, group2_weights_cz)}\n")
 
+# Weight the stats proportionally by the weights we calculated, as the T-test is doing above
+wg1f = np.multiply(group1_difference_fz, group1_weights_fz)
+wg2f = np.multiply(group2_difference_fz, group2_weights_fz)
+wg1c = np.multiply(group1_difference_cz, group1_weights_cz)
+wg2c = np.multiply(group2_difference_cz, group2_weights_cz)
+
+print(f"Group 1 [{group1_name}] fz difference mean: {np.mean(wg1f)} std: {np.std(wg1f)}")
+print(f"Group 1 [{group1_name}] cz difference mean: {np.mean(wg1c)} std: {np.std(wg1c)}")
+print(f"Group 2 [{group2_name}] fz difference mean: {np.mean(wg2f)} std: {np.std(wg2f)}")
+print(f"Group 2 [{group2_name}] cz difference mean: {np.mean(wg2c)} std: {np.std(wg2c)}")
