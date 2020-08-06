@@ -1,14 +1,13 @@
-# Apparent Attenuation of Postmortem Decomposition among Tibetan Buddhist Meditators Not Accompanied by Detectable Electroencephalographic Activity 24-hours After Clinical Declaration of Death
+# Analysis code for Lott, et. al 2020, Frontiers in Neuroscience 
 
-## Lott, et. al 2020 
-
-### Frontiers in Neuroscience 
+Paper title: "Apparent Attenuation of Postmortem Decomposition among Tibetan Buddhist Meditators Not Accompanied by Detectable Electroencephalographic Activity 24-hours After Clinical Declaration of Death"
 
 Analysis code for Biosemi EEG processing, doing artifact rejection,
-and various statistical summaries for the paper above.
+and various statistical summaries for the above paper.
 
-This is the 2019-20 conversion of analysis code in Matlab and EEGLAB to
-python and the MNE library, coded by Dan Fitch with support from John Koger.
+This is the 2019-20 conversion of prior analysis code written in Matlab and 
+EEGLAB to Python and the [MNE](https://mne.tools/) library,
+coded by Dan Fitch with support from John Koger.
 
 This was developed in somewhat of a rush and also not assuming we would be
 basing future EEG studies on this code, so there's quite a bit of duplication
