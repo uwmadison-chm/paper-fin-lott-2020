@@ -1,11 +1,19 @@
-# Thukdam analysis scripts
+# Apparent Attenuation of Postmortem Decomposition among Tibetan Buddhist Meditators Not Accompanied by Detectable Electroencephalographic Activity 24-hours After Clinical Declaration of Death
 
-This is the 2019-20 conversion from Matlab and EEGLAB to
-python and the MNE library by Dan Fitch.
+## Lott, et. al 2020 
+
+### Frontiers in Neuroscience 
+
+Analysis code for Biosemi EEG processing, doing artifact rejection,
+and various statistical summaries for the paper above.
+
+This is the 2019-20 conversion of analysis code in Matlab and EEGLAB to
+python and the MNE library, coded by Dan Fitch with support from John Koger.
 
 This was developed in somewhat of a rush and also not assuming we would be
 basing future EEG studies on this code, so there's quite a bit of duplication
-and copy-paste instead of generalizing. Sorry to future folk!
+and copy-paste instead of generalizing. Apologies to future folk referencing 
+this!
 
 
 ## Data structure and context
@@ -89,8 +97,6 @@ date and time, or you can name your output directory with `--name FOLDERNAME`.
 
 See `mmn_analysis.py`
 
-TODO
-
 
 ## ABR
 
@@ -104,4 +110,3 @@ identically to the MMN grand average above.
 
 See `abr_analysis.py`
 
-TODO

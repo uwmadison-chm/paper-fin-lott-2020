@@ -1,0 +1,24 @@
+{
+    "description": "Utilities to analyze Biosemi EEG data from the field in India",
+    "title": "uwmadison-chm/paper-fin-lott-2020: 1.0.0",
+    "version": "1.0.0",
+    "upload_type": "software",
+    "publication_date": "2020-08-06",
+    "creators": [
+        {
+            "affiliation": "Center for Healthy Minds, University of Wisconsin-Madison",
+            "name": "Fitch, Dan"
+        },
+        {
+            "affiliation": "Center for Healthy Minds, University of Wisconsin-Madison",
+            "name": "Koger, John"
+        },
+        {
+            "affiliation": "Center for Healthy Minds, University of Wisconsin-Madison",
+            "name": "Lott, Dylan"
+        }
+    ],
+    "notes":"Supported by NICHD grant ",
+    "access_right": "open",
+    "license": "MIT"
+}
