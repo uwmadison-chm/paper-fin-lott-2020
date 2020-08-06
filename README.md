@@ -2,6 +2,8 @@
 
 Paper title: "Apparent Attenuation of Postmortem Decomposition among Tibetan Buddhist Meditators Not Accompanied by Detectable Electroencephalographic Activity 24-hours After Clinical Declaration of Death"
 
+[![DOI](https://zenodo.org/badge/285621487.svg)](https://zenodo.org/badge/latestdoi/285621487)
+
 Analysis code for Biosemi EEG processing, doing artifact rejection,
 and various statistical summaries for the above paper.
 
