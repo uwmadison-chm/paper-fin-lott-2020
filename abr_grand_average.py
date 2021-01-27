@@ -30,7 +30,7 @@ else:
 
 
 INPUT_DIR = "/study/thukdam/analyses/eeg_statistics/abr"
-OUTPUT_DIR = f"/study/thukdam/analyses/eeg_statistics/abr/plots/{args.name}"
+OUTPUT_DIR = f"/scratch/dfitch/plots/{args.name}"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 with open(f"{OUTPUT_DIR}/README.txt", 'w') as f:
@@ -60,6 +60,8 @@ all_average = mne.combine_evoked(total, weights='nave')
 
 logging.info(f"Read {args.subject} from {INPUT_DIR}, creating plots in {OUTPUT_DIR}")
 
+
+
 def plot(electrode, scale=2.5, auto=False):
     if electrode is None:
         pick = "all"
@@ -67,12 +69,13 @@ def plot(electrode, scale=2.5, auto=False):
     else:
         pick = all_average.ch_names.index(electrode)
 
-    fig, ax = plt.subplots(figsize=(6, 4))
-    ax.axvline(x=0, linewidth=0.5, color='black')
-    ax.axhline(y=0, linewidth=0.5, color='black')
+    fig, ax = plt.subplots(figsize=(4, 8/3))
+    ax.axvline(x=0, color='black')
+    ax.axhline(y=0, color='black')
 
     kwargs = dict(axes=ax, picks=pick,
         titles=dict(eeg=electrode),
+        window_title=electrode,
         time_unit="ms",
         show=False)
 
@@ -83,34 +86,21 @@ def plot(electrode, scale=2.5, auto=False):
         name = str(scale)
         fig = all_average.plot(ylim=dict(eeg=[-1 * scale, scale]), **kwargs)
 
+    # MNE's Evoked object doesn't let you pass linewidth. Thus, this horrendous hack:
+
+    line = plt.gca().lines[-1]
+    line.set_linewidth(2.)
+
+    title = plt.gca().title
+    title.set_text(electrode)
+
     filename = f"{OUTPUT_DIR}/{args.name}_{name}_{electrode}.png"
-    fig.savefig(filename, dpi=300)
+    fig.savefig(filename, dpi=300, bbox_inches="tight")
     logging.info(f"Plot for abr grand average on {electrode} saved to {filename}")
 
-plot("Cz", auto=True)
-plot("Fz", auto=True)
-plot("Pz", auto=True)
-plot("T8", auto=True)
-plot("Cz", 0.25)
-plot("Fz", 0.25)
-plot("Pz", 0.25)
-plot("T8", 0.25)
 plot("Cz", 1.0)
 plot("Fz", 1.0)
 plot("Pz", 1.0)
 plot("T8", 1.0)
-plot("Cz", 2.5)
-plot("Fz", 2.5)
-plot("Pz", 2.5)
-plot("T8", 2.5)
-plot("Cz", 5.0)
-plot("Fz", 5.0)
-plot("Pz", 5.0)
-plot("T8", 5.0)
-
-# Robin sez no need for cross-electrode averages
-# plot(None, auto=True)
-# plot(None, 2.5)
-# plot(None, 5.0)
 
 

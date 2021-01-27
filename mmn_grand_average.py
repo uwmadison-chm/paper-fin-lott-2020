@@ -33,7 +33,7 @@ else:
 
 
 INPUT_DIR = "/study/thukdam/analyses/eeg_statistics/mmn"
-OUTPUT_DIR = f"/study/thukdam/analyses/eeg_statistics/mmn/plots/{args.name}"
+OUTPUT_DIR = f"/scratch/dfitch/plots/{args.name}"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 GOOD_TIMES = None
 
@@ -113,7 +113,7 @@ def plot_dms(electrode, scale=2.5, auto=False):
     else:
         pick = standard_average.ch_names.index(electrode)
 
-    fig, ax = plt.subplots(figsize=(6, 4))
+    fig, ax = plt.subplots(figsize=(4, 8/3))
 
     kwargs = dict(axes=ax, picks=pick,
         truncate_yaxis=False,
@@ -137,25 +137,11 @@ def plot_dms(electrode, scale=2.5, auto=False):
         mne.viz.plot_compare_evokeds(evoked, ylim=dict(eeg=[-1 * scale, scale]), **kwargs)
 
     filename = f"{OUTPUT_DIR}/{args.name}_{name}_{electrode}.png"
-    fig.savefig(filename, dpi=300)
+    fig.savefig(filename, dpi=300, bbox_inches="tight")
     logging.info(f"Plot for mmn grand average on {electrode} saved to {filename}")
 
-plot_dms("Cz", auto=True)
-plot_dms("Fz", auto=True)
-plot_dms("Pz", auto=True)
-plot_dms("T8", auto=True)
-plot_dms("Cz", 2.5)
-plot_dms("Fz", 2.5)
-plot_dms("Pz", 2.5)
-plot_dms("T8", 2.5)
 plot_dms("Cz", 6.0)
 plot_dms("Fz", 6.0)
 plot_dms("Pz", 6.0)
 plot_dms("T8", 6.0)
-
-# Robin sez no need for cross-electrode averages
-# plot_dms(None, auto=True)
-# plot_dms(None, 2.5)
-# plot_dms(None, 5.0)
-
 
